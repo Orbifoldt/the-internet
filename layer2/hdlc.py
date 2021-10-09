@@ -1,3 +1,5 @@
+from layer1 import encode
+
 
 class HdlcFrame:
     flag = [0, 1, 1, 1, 1, 1, 1, 0]

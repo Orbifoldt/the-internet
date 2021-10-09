@@ -17,4 +17,3 @@ class TestEthernetFrame(TestCase):
                    "0696e746f20746869732065746865726e6574206672616d65" \
                    "e9d10d2b"  # The crc32 checksum (bytes reversed)
         self.assertEqual(frame.to_bits(), BitArray(hex="0x" + expected))
-
