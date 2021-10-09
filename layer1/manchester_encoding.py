@@ -1,6 +1,8 @@
 from itertools import count
 from math import sin, pi, cos, floor, ceil
 from typing import Callable, Generator
+
+import numpy as np
 from bitstring import BitArray
 
 
@@ -69,14 +71,36 @@ def encode(data: BitArray) -> Callable[[float], float]:
 
 
 def decode(signal: Callable[[float], float]) -> Generator[bool, None, None]:
+    """
+    Given a physical signal this will return a generator that will contain the bits encoded in that signal
+    It assumes the Manchester code is used for encoding the bits (i.e. a rising edge is 1, a falling edge is 0)
+    If the signal is 0 during an extended period of time this is detected and the generator is closed
+    :param signal: (float) -> float : the signal containing the manchester encoded bits with a frequency = 1,
+    i.e. the signal is polled at integer values.
+    :return: Generator containing either None if no signal was seen, or a bool representing the bit value (according
+    to manchester encoding)
+    """
     epsilon = 0.001
+    signal_started = False
     for j in count():
-        yield signal(j + epsilon) > signal(j - epsilon)
+        y1 = signal(j - epsilon)
+        y2 = signal(j + epsilon)
+        if y1 == 0. and y2 == 0.:
+            if signal_started:
+                signal_dead = True
+                for x in np.linspace(j + epsilon, j + 96, 173):
+                    if signal(x) != 0:
+                        signal_dead = False
+                        break
+                if signal_dead:
+                    return
+            yield None
+        else:
+            signal_started = True
+            yield y2 > y1
 
 
-
-
-
+# TODO: create jupyter nb with below
 # import matplotlib.pyplot as plt
 # import numpy as np
 # bits = BitArray(bin="0b1001001001010101")

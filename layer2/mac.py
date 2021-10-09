@@ -5,7 +5,6 @@ class Mac(object):
     mac_pattern = re.compile(r"^(?:[0-9A-Fa-f]{2})([-:])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}$")
 
     def __init__(self, address: bytes, separator=':', uppercase=False) -> None:
-        super().__init__()
         self.address = bytes(address)
         self.separator = separator
         self.uppercase = uppercase
@@ -19,3 +18,8 @@ class Mac(object):
     def __str__(self) -> str:
         string = self.address.hex(self.separator)
         return string.upper() if self.uppercase else string
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, Mac) and self.address == o.address
+
+

@@ -1,38 +1,41 @@
-from typing import Callable
+from typing import Callable, Generator
 from bitstring import BitArray
 from layer1 import manchester_encoding as me
 
 
-def decode_to_bits(signal: Callable[[float], float], start_flag: BitArray, end_flag: BitArray):
-    decoded = me.decode(signal)
+def consume_bits_until_match(source: Generator[bool, None, None], pattern: BitArray):
     received_bits = []
-    count = 0
-
-    start_bits = [b for b in start_flag]
-    while True:
-        received_bits.append(next(decoded))
-        count += 1
-        if count >= len(start_flag):
-            if start_bits == received_bits[-len(start_flag):]:
-                break
-        if count >= 10000:
-            raise ValueError("no match for start found in signal")
-
-    data = []
-    end_bits = [b for b in end_flag]
-    while True:
-        bit = next(decoded)
-        count += 1
-        data.append(bit)
+    for bit in source:
         received_bits.append(bit)
+        if pattern == received_bits[-len(pattern):]:
+            return
+        if len(received_bits) > 100000:
+            break
+    raise ValueError("Pattern not found")
 
-        if count >= len(end_flag):
-            if end_bits == received_bits[-len(end_flag):]:
-                break
-        if count >= 20000:
-            raise ValueError("no match for start found in signal")
-    data = data[:-len(end_flag)]
-    return BitArray(auto=data)
+
+def get_data_until_signal_dead(source: Generator[bool, None, None]) -> BitArray:
+    return BitArray(auto=source)
+
+
+def get_data_until_match(source: Generator[bool, None, None], pattern: BitArray) -> BitArray:
+    received_bits = []
+    for bit in source:
+        received_bits.append(bit)
+        if pattern == received_bits[-len(pattern):]:
+            return BitArray(auto=received_bits[:-len(pattern)])
+        if len(received_bits) > 100000:
+            break
+    raise ValueError("Pattern not found")
+
+
+def decode_frame_bits(signal: Callable[[float], float], start_flag: BitArray, end_flag: BitArray = None) -> BitArray:
+    decoded = me.decode(signal)
+    consume_bits_until_match(decoded, start_flag)
+    if end_flag is not None:
+        return get_data_until_match(decoded, end_flag)
+    else:
+        return get_data_until_signal_dead(decoded)
 
 
 
