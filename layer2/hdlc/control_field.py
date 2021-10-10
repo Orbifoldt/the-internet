@@ -36,13 +36,14 @@ class SupervisoryType(Enum):
     RNR = 0b10, "Receive Not Ready"
     SREJ = 0b11, "Selective Reject"
 
-    @property
-    def code(self):
-        return self.value[0]
+    def __new__(cls, code, description):
+        entry = object.__new__(cls)
+        entry.code = entry._value_ = code  # set the value, and the extra attribute
+        entry.description = description
+        return entry
 
-    @property
-    def description(self):
-        return self.value[1]
+    def __repr__(self):
+        return f'<{type(self).__name__}.{self.name}: code={self.code!r}; {self.description!r}>'
 
     @property
     def command(self):
@@ -101,25 +102,20 @@ class UnnumberedType(Enum):
     CFGR = 0b10, 0b011, True, True, "Configure for test"
     BCN = 0b11, 0b111, False, True, "Beacon"
 
-    @property
-    def m1(self):
-        return self.value[0]
+    def __new__(cls, m1, m2, command, response, description):
+        entry = object.__new__(cls)
+        entry._value_ = (m1, m2)
+        entry.m1 = m1
+        entry.m2 = m2
+        entry.command = command
+        entry.response = response
+        entry.description = description
+        return entry
 
-    @property
-    def m2(self):
-        return self.value[1]
+    def __repr__(self):
+        return f'<{type(self).__name__}.{self.name}: code=({self.m1!r},{self.m2!r}); {self.description!r}>'
 
-    @property
-    def command(self):
-        return self.value[2]
 
-    @property
-    def response(self):
-        return self.value[3]
-
-    @property
-    def description(self):
-        return self.value[4]
 
 
 class UnnumberedCf(ControlField):
@@ -131,6 +127,3 @@ class UnnumberedCf(ControlField):
         self.m1 = BitArray(uint=u_type.m1 % 2 ** self.m1_bits, length=self.m1_bits)
         self.m2 = BitArray(uint=u_type.m2 % 2 ** self.m2_bits, length=self.m2_bits)
         super().__init__(BitArray(auto=[1, 1] + self.m1 + [pf] + self.m2), pf)
-
-
-
