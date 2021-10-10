@@ -20,7 +20,7 @@ def ethernet_frame_from(signal: Callable[[float], float]) -> EthernetFrame:
 
     calculated_fcs = crc32(frame_bytes[:-4])
     if fcs != calculated_fcs:
-        raise ValueError(f"The calculated FCS '{calculated_fcs}' does not equal FCS of the ethernet frame: '{fcs}'")
+        raise ValueError(f"The calculated FCS '{calculated_fcs}' does not equal FCS of the received frame: '{fcs}'")
 
     return EthernetFrame(mac_dest, mac_src, payload, ether_type)
 
