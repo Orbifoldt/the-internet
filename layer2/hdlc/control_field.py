@@ -14,6 +14,9 @@ class ControlField(ABC):
     def bytes(self):
         return self.bits.bytes
 
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, self.__class__) and self.bits == o.bits
+
 
 class InformationCf(ControlField):
     ns_bit_length = 3

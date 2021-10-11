@@ -2,12 +2,11 @@ from typing import Callable
 
 from bitstring import BitArray
 
-import layer1.manchester_encoding as me
 from layer2.hdlc.control_field import ExtendedInfoCf, InformationCf, SupervisoryType, ExtendedSupervisoryCf, \
     SupervisoryCf, UnnumberedCf, UnnumberedType
-from layer2.hdlc.hdlc import HdlcFrameBase, HdlcMode
+from layer2.hdlc.hdlc import HdlcFrameBase, HdlcMode, constructor
 from layer2.receive_data import decode_frame_bits, decode_frame_bytes
-from layer2.tools import destuff_bits, bits_to_bytes, crc32, bits_to_int
+from layer2.tools import destuff_bits, bits_to_bytes, crc32, bits_to_int, encode_with_flag, stuff_bits
 
 
 def hdlc_frame_from(signal: Callable[[float], float], mode: HdlcMode, extended: bool = False) -> HdlcFrameBase:
@@ -21,6 +20,8 @@ def hdlc_frame_from(signal: Callable[[float], float], mode: HdlcMode, extended: 
     else:
         frame_bytes = decode_frame_bytes(signal, start_flag=flag, end_flag=flag, escape=HdlcFrameBase.escape_byte)
 
+    if (n := len(frame_bytes)) < 6:
+        raise ValueError(f"Received frame of length {n} which can't be processed.")
     end_control_index = 3 if (not is_u_frame(frame_bytes[1:2]) and extended) else 2
     address = frame_bytes[0]
     control_bytes = frame_bytes[1:end_control_index]
@@ -33,9 +34,7 @@ def hdlc_frame_from(signal: Callable[[float], float], mode: HdlcMode, extended: 
                          address, control_bytes, frame_bytes)
 
     control_field = control_field_from(control_bytes)
-
-    # then return the frame object
-
+    return constructor(address, control_field, information)
 
 
 def control_field_from(control_bytes: bytes):
@@ -68,6 +67,17 @@ def is_u_frame(control_bytes: bytes) -> bool:
     bits = BitArray(auto=control_bytes)
     return bits[0] == 1 and bits[1] == 1
 
+
 def is_i_frame(control_bytes: bytes) -> bool:
     bits = BitArray(auto=control_bytes)
     return bits[0] == 0
+
+
+def encode(frames: list[HdlcFrameBase], mode: HdlcMode) -> BitArray:
+    if mode == HdlcMode.NORMAL:
+        stuffed_bits = [stuff_bits(x.bits(), HdlcFrameBase.bits_to_stuff, HdlcFrameBase.stuffing_bit) for x in frames]
+        encoded_bytes = encode_with_flag([bytes(x) for x in stuffed_bits], HdlcFrameBase.flag)
+        return BitArray(auto=encoded_bytes)
+    else:
+        # encoded_bytes = encode_with_flag([stuff_bytes(x.bytes()) for x in frames], HdlcFrameBase.flag)
+        raise NotImplementedError

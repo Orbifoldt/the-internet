@@ -3,7 +3,7 @@ from unittest import TestCase
 from bitstring import BitArray
 
 from layer2.tools import bits_to_int, bit_to_byte_generator, crc32, find_match, stuff_bits, replace_all_matches, \
-    destuff_bits, bits_to_bytes
+    destuff_bits, bits_to_bytes, interleave, encode_with_flag
 
 
 def bool_list(string: str):
@@ -151,3 +151,12 @@ class Test(TestCase):
 
         expected = bool_list(some_data + pattern_str + some_data + pattern_str + pattern_str + some_data + pattern_str)
         self.assertEqual(expected, destuffed)
+
+    def test_interleave(self):
+        self.assertEqual([0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0], interleave([1, 2, 3, 4, 5], 0))
+
+    def test_encode_with_flag(self):
+        flag = b'a'
+        data = [b'abc', b'xyz', b'123']
+        expected = flag + data[0] + flag + data[1] + flag + data[2] + flag
+        self.assertEqual(expected, encode_with_flag(data, flag))

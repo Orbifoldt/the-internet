@@ -64,3 +64,14 @@ def stuff_bits(data: list[bool], pattern: list[bool], stuffing_bit: bool) -> lis
 
 def destuff_bits(data: list[bool], stuffed_pattern: list[bool]) -> list[bool]:
     return replace_all_matches(data, stuffed_pattern, stuffed_pattern[:-1])
+
+
+def interleave(elts: list[T], sep: T) -> list[T]:
+    return [sep] + [val for elt in elts for val in (elt, sep)]
+
+
+def encode_with_flag(frames: list[bytes], sep: bytes) -> bytes:
+    combined = bytes()
+    for section in interleave(frames, sep):
+        combined += section
+    return combined

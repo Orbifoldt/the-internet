@@ -8,6 +8,21 @@ class TestControlField(TestCase):
         with self.assertRaises(TypeError):
             ControlField(BitArray(auto=[0, 1, 0, 1, 0, 1, 0, 1]), True)
 
+    def test_equality_information_cf(self):
+        icf1 = InformationCf(pf=True, ns=17, nr=35)
+        icf2 = InformationCf(pf=True, ns=1, nr=3)
+        self.assertTrue(icf1 == icf2)
+
+    def test_inequality_information_cf(self):
+        icf1 = InformationCf(pf=True, ns=5, nr=3)
+        icf2 = InformationCf(pf=True, ns=1, nr=3)
+        self.assertFalse(icf1 == icf2)
+
+    def test_inequality_two_cf(self):
+        icf = InformationCf(pf=True, ns=1, nr=3)
+        scf = SupervisoryCf(pf=True, s_type=SupervisoryType.REJ, nr=3)
+        self.assertFalse(icf == scf)
+
     def test_create_information_cf(self):
         icf = InformationCf(pf=True, ns=17, nr=35)
         ns_bits = "001"  # bits of 17 % 8

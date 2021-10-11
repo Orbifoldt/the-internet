@@ -31,6 +31,7 @@ def get_data_until_match(source: Generator[T, None, None], pattern: list[T], esc
 
         if len(received) > 100000:
             raise ValueError("Pattern not found")
+    raise ValueError("Provided source was empty!")
 
 
 def pattern_matches(data: list[T], pattern: list[T]) -> bool:

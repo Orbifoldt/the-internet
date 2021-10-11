@@ -42,6 +42,9 @@ class HdlcFrameBase(ABC):
         all_data = self.address.to_bytes(1, 'big') + self.control.bytes + self.information
         return crc32(all_data)
 
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, self.__class__) and o.bits() == self.bits()
+
 
 class HdlcIFrame(HdlcFrameBase):
     def __init__(self, address: int, control: InformationCf, information: bytes) -> None:
@@ -72,8 +75,15 @@ class HdlcUFrame(HdlcFrameBase):
         super().__init__(address, control, information)
 
 
-# def constructor(address: int, control: ControlField, information: bytes):
-#     match control:
-#         case ExtendedInfoCf(_,_,_):
-#             HdlcExtendedIFrame(address, control, information)
-
+def constructor(address: int, control: ControlField, information: bytes):
+    match control:
+        case ExtendedInfoCf(_, _, _):
+            return HdlcExtendedIFrame(address, control, information)
+        case InformationCf(_, _, _):
+            return HdlcIFrame(address, control, information)
+        case ExtendedSupervisoryCf(_, _, _):
+            return HdlcExtendedSFrame(address, control)
+        case SupervisoryCf(_, _, _):
+            return HdlcSFrame(address, control)
+        case UnnumberedCf(_, _):
+            return HdlcUFrame(address, control, information)
