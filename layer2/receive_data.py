@@ -1,7 +1,4 @@
-from typing import Callable, TypeVar, Tuple
-from bitstring import BitArray
-from layer1 import manchester_encoding as me
-from layer2.tools import bit_to_byte_generator, find_match, replace_all_matches, interleave
+from typing import TypeVar
 
 T = TypeVar('T')
 
@@ -51,39 +48,3 @@ T = TypeVar('T')
 #         return bytes(data)
 #     else:
 #         return get_data_bytes_until_signal_dead(byte_source)
-
-
-#####################################
-#      Stuffing and undoing it      #
-#####################################
-
-
-def stuff_bits(data: list[bool], pattern: list[bool], stuffing_bit: bool) -> list[bool]:
-    return replace_all_matches(data, pattern, pattern + [stuffing_bit])
-
-
-def stuff_bit_array(data: BitArray, pattern: BitArray, stuffing_bit: bool) -> BitArray:
-    return BitArray(auto=stuff_bits(list(data), list(pattern), stuffing_bit))
-
-
-def destuff_bits(stuffed_data: list[bool], pattern: list[bool], stuffing_bit: bool) -> list[bool]:
-    return replace_all_matches(stuffed_data, pattern + [stuffing_bit], pattern)
-
-
-#####################################
-#          Encoding frames          #
-#####################################
-
-
-def encode_with_flag(frames: list[bytes], sep: bytes) -> bytes:
-    concatenated_bytes = bytes()
-    for section in interleave(frames, sep):
-        concatenated_bytes += section
-    return concatenated_bytes
-
-
-def encode_bits_with_flag(frames: list[BitArray], sep: bytes) -> BitArray:
-    concatenated_bits = BitArray()
-    for section in interleave(frames, BitArray(auto=sep)):
-        concatenated_bits += section
-    return concatenated_bits

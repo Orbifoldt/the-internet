@@ -1,6 +1,8 @@
 import zlib
 from typing import Iterable, Generator, TypeVar, Optional, Tuple
 
+from bitstring import BitArray
+
 T = TypeVar('T')
 
 
@@ -50,7 +52,7 @@ def bit_to_byte_generator(source: Generator[bool, None, None]) -> Generator[int,
 
 
 #####################################
-#        list manipulations          #
+#        list manipulations         #
 #####################################
 
 
@@ -129,3 +131,18 @@ def separate(data: list[T], start_flag: list[T], end_flag: list[T] = None) -> li
     return separated_blocks
 
 
+#####################################
+#      Stuffing and undoing it      #
+#####################################
+
+
+def stuff_bits(data: list[bool], pattern: list[bool], stuffing_bit: bool) -> list[bool]:
+    return replace_all_matches(data, pattern, pattern + [stuffing_bit])
+
+
+def stuff_bit_array(data: BitArray, pattern: BitArray, stuffing_bit: bool) -> BitArray:
+    return BitArray(auto=stuff_bits(list(data), list(pattern), stuffing_bit))
+
+
+def destuff_bits(stuffed_data: list[bool], pattern: list[bool], stuffing_bit: bool) -> list[bool]:
+    return replace_all_matches(stuffed_data, pattern + [stuffing_bit], pattern)

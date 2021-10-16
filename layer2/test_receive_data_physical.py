@@ -3,7 +3,6 @@ from unittest import TestCase
 from bitstring import BitArray
 from layer1 import manchester_encoding as me
 from receive_data_physical import decode_frame_bits, decode_frame_bytes
-from layer2.tools import bits_to_int, bit_to_byte_generator
 
 
 class Test(TestCase):

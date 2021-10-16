@@ -7,8 +7,7 @@ from bitstring import BitArray
 from layer2.escape import EscapeSchema
 from layer2.hdlc.control_field import ControlField, InformationCf, SupervisoryCf, UnnumberedCf, ExtendedInfoCf, \
     ExtendedSupervisoryCf
-from layer2.receive_data import stuff_bit_array
-from layer2.tools import crc32
+from layer2.tools import crc32, stuff_bit_array
 
 
 class HdlcMode(Enum):

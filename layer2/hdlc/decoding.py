@@ -4,8 +4,7 @@ from layer2.hdlc.control_field import ExtendedInfoCf, InformationCf, Supervisory
     SupervisoryCf, UnnumberedCf, UnnumberedType, ControlField
 from layer2.hdlc.hdlc import HdlcMode, HdlcFrameBase, HdlcExtendedIFrame, HdlcIFrame, HdlcExtendedSFrame, HdlcSFrame, \
     HdlcUFrame
-from layer2.receive_data import destuff_bits
-from layer2.tools import separate, bits_to_bytes, bits_to_int, crc32
+from layer2.tools import separate, bits_to_bytes, bits_to_int, crc32, destuff_bits
 
 
 def decode(data: BitArray, mode: HdlcMode, extended: bool = False) -> list[HdlcFrameBase]:
