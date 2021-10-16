@@ -1,10 +1,13 @@
+import builtins
 from abc import ABC, abstractmethod
 from enum import Enum
 
 from bitstring import BitArray
 
+from layer2.escape import EscapeSchema
 from layer2.hdlc.control_field import ControlField, InformationCf, SupervisoryCf, UnnumberedCf, ExtendedInfoCf, \
     ExtendedSupervisoryCf
+from layer2.receive_data import stuff_bit_array
 from layer2.tools import crc32
 
 
@@ -15,9 +18,13 @@ class HdlcMode(Enum):
 
 
 class HdlcFrameBase(ABC):
-    flag = int("01111110", 2).to_bytes(1, byteorder='big')
-    escape_byte = int("10111110", 2).to_bytes(1, byteorder='big')
+    flag = b'\x7E'  # 01111110
+    escape_byte = b'\x7D'   # 01111101
+    escape_schema = EscapeSchema(b'\x7D', {b'\x7D': b'\x5D', b'\x7E': b'\x5E'})
+
+    flag_bits = BitArray(auto=flag)
     bits_to_stuff = [c == '1' for c in "11111"]
+    bit_array_to_stuff = BitArray(auto=bits_to_stuff)
     stuffing_bit = False
 
     @abstractmethod
@@ -44,6 +51,15 @@ class HdlcFrameBase(ABC):
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, self.__class__) and o.bits() == self.bits()
+
+    def encode_as_bytes(self) -> builtins.bytes:
+        return self.escape_schema.escape(self.bytes())
+
+    def encode_as_bits(self, mode: HdlcMode) -> BitArray:
+        if mode == HdlcMode.NORMAL:
+            return stuff_bit_array(self.bits(), self.bit_array_to_stuff, self.stuffing_bit)
+        else:
+            return BitArray(auto=self.encode_as_bytes())
 
 
 class HdlcIFrame(HdlcFrameBase):
@@ -73,17 +89,3 @@ class HdlcExtendedSFrame(HdlcFrameBase):
 class HdlcUFrame(HdlcFrameBase):
     def __init__(self, address: int, control: UnnumberedCf, information: bytes) -> None:
         super().__init__(address, control, information)
-
-
-def constructor(address: int, control: ControlField, information: bytes):
-    match control:
-        case ExtendedInfoCf(_, _, _):
-            return HdlcExtendedIFrame(address, control, information)
-        case InformationCf(_, _, _):
-            return HdlcIFrame(address, control, information)
-        case ExtendedSupervisoryCf(_, _, _):
-            return HdlcExtendedSFrame(address, control)
-        case SupervisoryCf(_, _, _):
-            return HdlcSFrame(address, control)
-        case UnnumberedCf(_, _):
-            return HdlcUFrame(address, control, information)

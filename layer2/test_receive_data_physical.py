@@ -2,20 +2,11 @@ from unittest import TestCase
 
 from bitstring import BitArray
 from layer1 import manchester_encoding as me
-from layer2.receive_data import destuff_bits, stuff_bits, encode_with_flag
 from receive_data_physical import decode_frame_bits, decode_frame_bytes
 from layer2.tools import bits_to_int, bit_to_byte_generator
 
 
-def bool_list(string: str):
-    return [c == '1' for c in string]
-
-
 class Test(TestCase):
-    pattern_str = "11111"
-    stuffing_bit = False
-    pattern = bool_list(pattern_str)
-
     def test_decode_frame_bits(self):
         start = "10101011"
         end = "01111110"
@@ -84,63 +75,3 @@ class Test(TestCase):
         signal = me.encode(bit_noise + BitArray(auto=flag + escaped_data + flag) + bit_noise)
         decoded = decode_frame_bytes(signal, start_flag=flag, end_flag=flag, escape=escape)
         self.assertEqual(data1 + flag + data2, decoded)
-
-    #####################################
-    #      Stuffing and escaping        #
-    #####################################
-
-    def test_stuff_bits_single_match(self):
-        data = bool_list("1001001101010" + self.pattern_str + "01101101011001110")
-        stuffed = stuff_bits(data, self.pattern, stuffing_bit=self.stuffing_bit)
-        expected = bool_list("1001001101010" + self.pattern_str + "0" + "01101101011001110")
-        self.assertEqual(expected, stuffed)
-
-    def test_stuff_bits_single_match_end_of_list(self):
-        data = bool_list(self.pattern_str)
-        stuffed = stuff_bits(data, self.pattern, stuffing_bit=self.stuffing_bit)
-        expected = bool_list(self.pattern_str + "0")
-        self.assertEqual(expected, stuffed)
-
-    def test_stuff_bits_multiple_matches(self):
-        some_data = "00"
-        data_str = some_data + self.pattern_str + some_data + self.pattern_str + self.pattern_str + some_data + self.pattern_str
-        data = bool_list(data_str)
-
-        stuffed = stuff_bits(data, self.pattern, stuffing_bit=self.stuffing_bit)
-
-        stuff_str = self.pattern_str + "0"
-        expected = bool_list(some_data + stuff_str + some_data + stuff_str + stuff_str + some_data + stuff_str)
-        self.assertEqual(expected, stuffed)
-
-    def test_destuff_bits_single_match(self):
-        stuffed_data = bool_list("1001001101010" + self.pattern_str + "0" + "01101101011001110")
-        destuffed = destuff_bits(stuffed_data, self.pattern, stuffing_bit=self.stuffing_bit)
-        expected = bool_list("1001001101010" + self.pattern_str + "01101101011001110")
-        self.assertEqual(expected, destuffed)
-
-    def test_destuff_bits_single_match_end_of_list(self):
-        stuffed_data = bool_list(self.pattern_str + "0")
-        destuffed = destuff_bits(stuffed_data, self.pattern, stuffing_bit=self.stuffing_bit)
-        expected = bool_list(self.pattern_str)
-        self.assertEqual(expected, destuffed)
-
-    def test_destuff_bits_multiple_matches(self):
-        stuff_str = self.pattern_str + "0"
-        some_data = "00011100010"
-        stuffed_data_str = some_data + stuff_str + some_data + stuff_str + stuff_str + some_data + stuff_str
-        stuffed = bool_list(stuffed_data_str)
-
-        destuffed = destuff_bits(stuffed, bool_list(self.pattern_str), stuffing_bit=self.stuffing_bit)
-        expected = bool_list(some_data + self.pattern_str + some_data + self.pattern_str
-                             + self.pattern_str + some_data + self.pattern_str)
-        self.assertEqual(expected, destuffed)
-
-    #####################################
-    #          Encoding frames          #
-    #####################################
-
-    def test_encode_with_flag(self):
-        flag = b'a'
-        data = [b'abc', b'xyz', b'123']
-        expected = flag + data[0] + flag + data[1] + flag + data[2] + flag
-        self.assertEqual(expected, encode_with_flag(data, flag))

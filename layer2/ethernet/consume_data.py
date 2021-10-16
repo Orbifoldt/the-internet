@@ -3,7 +3,7 @@ from typing import Callable
 from bitstring import BitArray
 
 from layer2.mac import Mac
-from layer2.receive_data import decode_frame_bits
+from layer2.receive_data_physical import decode_frame_bits
 from ethernet import EthernetFrame, EtherType
 from layer2.tools import crc32
 

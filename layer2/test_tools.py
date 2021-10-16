@@ -2,8 +2,8 @@ from unittest import TestCase
 
 from bitstring import BitArray
 
-from layer2.tools import bits_to_int, bit_to_byte_generator, crc32, find_match, stuff_bits, replace_all_matches, \
-    destuff_bits, bits_to_bytes, interleave, encode_with_flag
+from layer2.tools import bits_to_int, bit_to_byte_generator, crc32, find_match, replace_all_matches, \
+    bits_to_bytes, interleave, separate, get_data_between_flags
 
 
 def bool_list(string: str):
@@ -79,6 +79,14 @@ class Test(TestCase):
         self.assertEqual(2, find_match(data, pattern, 2))
         self.assertEqual(7, find_match(data, pattern, 4))
 
+    def test_find_match_with_escape(self):
+        data = [1, 2, 0, 3, 4, 5, 6, 0, 7, 3, 4, 5, 8, 9, 0]
+        pattern = [3, 4, 5]
+        escape = [0]
+        self.assertEqual(9, find_match(data, pattern, start_idx=0, escape=escape))
+        self.assertEqual(9, find_match(data, pattern, start_idx=2, escape=escape))
+        self.assertEqual(9, find_match(data, pattern, start_idx=2, escape=escape))
+
     def test_replace_all_matches(self):
         data = [1, 2, 3, 4, 6, 3, 7, 4, 3, 4, 5, 8, 9, 0, 3, 4]
         pattern = [3, 4]
@@ -86,77 +94,47 @@ class Test(TestCase):
         expected = [1, 2, 8, 8, 8, 8, 6, 3, 7, 4, 8, 8, 8, 8, 5, 8, 9, 0, 8, 8, 8, 8]
         self.assertEqual(expected, replace_all_matches(data, pattern, replacement))
 
-    def test_stuff_bits_single_match(self):
-        pattern_str = "11111"
-        pattern = bool_list(pattern_str)
-        data = bool_list("1001001101010" + pattern_str + "01101101011001110")
-
-        stuffed = stuff_bits(data, pattern, stuffing_bit=False)
-
-        expected = bool_list("1001001101010" + pattern_str + "0" + "01101101011001110")
-        self.assertEqual(expected, stuffed)
-
-    def test_stuff_bits_single_match_end_of_list(self):
-        pattern_str = "11111"
-        pattern = bool_list(pattern_str)
-        data = bool_list(pattern_str)
-
-        stuffed = stuff_bits(data, pattern, stuffing_bit=False)
-
-        expected = bool_list(pattern_str + "0")
-        self.assertEqual(expected, stuffed)
-
-    def test_stuff_bits_multiple_matches(self):
-        pattern_str = "11111"
-        pattern = bool_list(pattern_str)
-        some_data = "00"
-        data_str = some_data + pattern_str + some_data + pattern_str + pattern_str + some_data + pattern_str
-        data = bool_list(data_str)
-
-        stuffed = stuff_bits(data, pattern, stuffing_bit=False)
-
-        stuff_str = pattern_str + "0"
-        expected = bool_list(some_data + stuff_str + some_data + stuff_str + stuff_str + some_data + stuff_str)
-        self.assertEqual(expected, stuffed)
-
-    def test_destuff_bits_single_match(self):
-        pattern_str = "11111"
-        stuffed_pattern = bool_list(pattern_str + "0")
-        stuffed_data = bool_list("1001001101010" + pattern_str + "0" + "01101101011001110")
-
-        destuffed = destuff_bits(stuffed_data, stuffed_pattern)
-
-        expected = bool_list("1001001101010" + pattern_str + "01101101011001110")
-        self.assertEqual(expected, destuffed)
-
-    def test_destuff_bits_single_match_end_of_list(self):
-        pattern_str = "11111"
-        stuffed_pattern = bool_list(pattern_str + "0")
-        stuffed_data = bool_list(pattern_str + "0")
-
-        stuffed = destuff_bits(stuffed_data, stuffed_pattern)
-
-        expected = bool_list(pattern_str)
-        self.assertEqual(expected, stuffed)
-
-    def test_destuff_bits_multiple_matches(self):
-        pattern_str = "11111"
-        stuff_str = pattern_str + "0"
-        stuffed_pattern = bool_list(pattern_str + "0")
-        some_data = "00"
-        stuffed_data_str = some_data + stuff_str + some_data + stuff_str + stuff_str + some_data + stuff_str
-        stuffed = bool_list(stuffed_data_str)
-
-        destuffed = destuff_bits(stuffed, stuffed_pattern)
-
-        expected = bool_list(some_data + pattern_str + some_data + pattern_str + pattern_str + some_data + pattern_str)
-        self.assertEqual(expected, destuffed)
-
     def test_interleave(self):
         self.assertEqual([0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0], interleave([1, 2, 3, 4, 5], 0))
 
-    def test_encode_with_flag(self):
-        flag = b'a'
-        data = [b'abc', b'xyz', b'123']
-        expected = flag + data[0] + flag + data[1] + flag + data[2] + flag
-        self.assertEqual(expected, encode_with_flag(data, flag))
+    def test_get_data_between_flags(self):
+        start = [1, 2]
+        end = [8, 9]
+        block1 = [5, 5, 5]
+        block2 = [6, 6, 6]
+        data = [0, 0, 0] + start + block1 + end + [-1, -1] + start + block2 + end + [0, 0]
+        found = get_data_between_flags(data, start, end)
+        self.assertEqual((block1, 3, 8), found)
+
+    def test_separate(self):
+        start = [1, 2]
+        end = [8, 9]
+        block1 = [5, 6, 7]
+        block2 = [7, 6, 5]
+        data = [0] + start + block1 + end + [0, 0] + start + block2 + end + [0, 0]
+        separated = separate(data, start, end)
+        self.assertEqual(2, len(separated))
+        self.assertListEqual(block1, separated[0])
+        self.assertListEqual(block2, separated[1])
+
+    def test_separate_with_repeated_start(self):
+        start = [1, 2]
+        end = [8, 9]
+        block1 = [5, 6, 7] + start + [5, 6, 7]
+        block2 = [7, 6, 5]
+        data = [0] + start + block1 + end + [0, 0] + start + block2 + end + [0, 0]
+        separated = separate(data, start, end)
+        self.assertEqual(2, len(separated))
+        self.assertListEqual(block1, separated[0])
+        self.assertListEqual(block2, separated[1])
+
+    def test_separate_with_equal_start_and_end_flags(self):
+        start = [1, 2]
+        block1 = [5, 6, 7]
+        block2 = [7, 6, 5]
+        data = [0] + start + block1 + start + [0, 0] + start + block2 + start + [0, 0]
+        separated = separate(data, start)
+        self.assertEqual(3, len(separated))
+        self.assertListEqual(block1, separated[0])
+        self.assertListEqual([0, 0], separated[1])
+        self.assertListEqual(block2, separated[2])
