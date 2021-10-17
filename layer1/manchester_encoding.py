@@ -1,5 +1,6 @@
 from itertools import count
 from math import sin, pi, cos, floor, ceil
+from types import NoneType
 from typing import Callable, Generator
 
 import numpy as np
@@ -32,7 +33,7 @@ def start_smoothing(t):
 
 
 def end_smoothing(t):
-    return start_smoothing(-t)
+    return start_smoothing(- t - 1)
 
 
 def sign(bit):
@@ -42,30 +43,30 @@ def sign(bit):
 def encode_segment(t, previous_bit, current_bit):
     if t < -1 or t >= 0:
         return 0.
-    sgn = sign(current_bit)
-    if previous_bit == current_bit:
-        return sgn * same_phase(t)
-    else:
-        return sgn * switch_phase(t)
+    sgn = sign(current_bit) if current_bit is not None else sign(previous_bit)
+    match (previous_bit, current_bit):
+        case (None, None):
+            return 0
+        case (None, _):
+            return sgn * start_smoothing(t) * node1(t)
+        case (_, None):
+            return sgn * end_smoothing(t) * node1(t)
+        case (True, True) | (False, False):
+            return sgn * same_phase(t)
+        case (_, _):
+            return sgn * switch_phase(t)
 
 
-def encode_boundary(t, current_bit, start):
-    if start:
-        return sign(current_bit) * start_smoothing(t) * node1(t)
-    else:
-        return sign(current_bit) * end_smoothing(t) * node1(t)
-
-
-def encode(data: BitArray) -> Callable[[float], float]:
+def encode(data: list[bool | None]) -> Callable[[float], float]:
     def signal(t):
         n = len(data)
         if t < -0.5 or t >= n - 0.5:
             return 0.
-        elif 0 <= t < n - 1:
+        elif -0.5 <= t < n - 0.5:
             k = ceil(t)
-            return encode_segment(t - k, data[k - 1], data[k])
-        else:  # -0.5 <= t < 0, or n-1 <= t < n-0.5
-            return encode_boundary(t - ceil(t), data[round(t)], start=(t < 0))
+            prev = data[k - 1] if k > 0 else None
+            curr = data[k] if k < n else None
+            return encode_segment(t - k, prev, curr)
 
     return signal
 
@@ -88,17 +89,18 @@ def decode(signal: Callable[[float], float]) -> Generator[bool, None, None]:
         if y1 == 0. and y2 == 0.:
             if signal_started:
                 signal_dead = True
-                for x in np.linspace(j + epsilon, j + 96, 173):
+                for x in np.linspace(j + epsilon, j + 500, 1817):
                     if signal(x) != 0:
                         signal_dead = False
                         break
                 if signal_dead:
+                    for x in range(200):
+                        yield None
                     return
             yield None
         else:
             signal_started = True
             yield y2 > y1
-
 
 # TODO: create jupyter nb with below
 # import matplotlib.pyplot as plt

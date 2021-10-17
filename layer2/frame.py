@@ -1,5 +1,5 @@
 import builtins
-from abc import ABC, abstractmethod, abstractstaticmethod
+from abc import ABC, abstractmethod
 from typing import Union
 
 from bitstring import BitArray
