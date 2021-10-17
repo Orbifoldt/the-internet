@@ -18,7 +18,7 @@ class TestEthernetFrame(TestCase):
                    "e9d10d2b"  # The crc32 checksum (bytes reversed)
         self.assertEqual(frame.bits(), BitArray(hex="0x" + expected))
 
-    def test_create_frame_small_payload(self):
+    def test_create_frame_small_payload_is_padded(self):
         payload = b'This is payload'
         frame = EthernetFrame(self.dest, self.src, payload)
 

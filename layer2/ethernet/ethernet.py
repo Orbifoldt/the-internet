@@ -15,13 +15,14 @@ class EtherType(Enum):
         return self.value.to_bytes(2, byteorder="big")
 
 
+# TODO: refactor to extract common functionality from this and the 802.3 frame
 class EthernetFrame:
     preamble: Final = int("10" * 28, 2).to_bytes(7, byteorder="big")
     start_frame_delim: Final = int("10101011", 2).to_bytes(1, byteorder="big")
     inter_packet_gap_size: Final = 96
 
-    MIN_PAYLOAD: Final = 46
-    MAX_PAYLOAD: Final = 1500
+    MIN_PAYLOAD = 46
+    MAX_PAYLOAD = 1500
 
     def __init__(self, destination: Mac, source: Mac, payload: bytes, ether_type: EtherType = EtherType.IPV4) -> None:
         if ether_type != EtherType.IPV4:
@@ -52,6 +53,9 @@ class EthernetFrame:
 
     def phys_bits(self):
         return BitArray(auto=self.phys_bytes())
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and other.bytes() == self.bytes()
 
 
 class LlcType(Enum):  # IEEE 802.1Q
@@ -108,3 +112,6 @@ class Ethernet802_3Frame:
 
     def phys_bits(self):
         return BitArray(auto=self.phys_bytes())
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and other.bytes() == self.bytes()
