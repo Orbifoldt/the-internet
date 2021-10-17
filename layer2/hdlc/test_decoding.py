@@ -5,8 +5,9 @@ from bitstring import BitArray
 from layer2.hdlc.control_field import InformationCf, ExtendedSupervisoryCf, SupervisoryType, ExtendedInfoCf, \
     UnnumberedCf, UnnumberedType
 from layer2.hdlc.decoding import interpret_control_field_from, decode
-from layer2.hdlc.encoding import encode
-from layer2.hdlc.hdlc import HdlcIFrame, HdlcMode, HdlcExtendedSFrame, HdlcExtendedIFrame, HdlcUFrame
+from layer2.frame import encode
+from layer2.hdlc.hdlc import HdlcIFrame, HdlcExtendedSFrame, HdlcExtendedIFrame, HdlcUFrame
+from layer2.hdlc_base import HdlcMode
 from layer2.tools import bits_to_bytes
 
 
@@ -44,44 +45,3 @@ class Test(TestCase):
         cf = interpret_control_field_from(bits_to_bytes(list(bits)))
         self.assertEqual(self.ucf, cf)
 
-    def test_single_hdlc_frame_from_bits(self):
-        bits = encode([self.iframe], HdlcMode.NORMAL)
-        decoded_frames = decode(bits, HdlcMode.NORMAL, extended=False)
-        self.assertEqual([self.iframe], decoded_frames)
-
-    def test_single_hdlc_frame_from_bits_async_mode(self):
-        bits = encode([self.iframe], HdlcMode.ASYNC_BALANCED)
-        decoded_frames = decode(bits, HdlcMode.ASYNC_BALANCED, extended=False)
-        self.assertEqual([self.iframe], decoded_frames)
-
-    def test_single_extended_hdlc_frame_from_bits(self):
-        bits = encode([self.ext_sframe], HdlcMode.NORMAL)
-        decoded_frames = decode(bits, HdlcMode.NORMAL, extended=True)
-        self.assertEqual([self.ext_sframe], decoded_frames)
-
-    def test_single_extended_hdlc_frame_from_bits_async_mode(self):
-        bits = encode([self.ext_sframe], HdlcMode.ASYNC_BALANCED)
-        decoded_frames = decode(bits, HdlcMode.ASYNC_BALANCED, extended=True)
-        self.assertEqual([self.ext_sframe], decoded_frames)
-
-    def test_multiple_extended_hdlc_frames_from_bits(self):
-        eicf = ExtendedInfoCf(pf=True, ns=17, nr=35)
-        information = b'Some stuff that we transmit'
-        ext_fframe = HdlcExtendedIFrame(address=129, control=eicf, information=information)
-
-        frames = [self.uframe, self.ext_sframe, ext_fframe, self.ext_sframe, self.ext_sframe, ext_fframe]
-        bits = encode(frames, HdlcMode.NORMAL)
-        
-        decoded_frames = decode(bits, HdlcMode.NORMAL, extended=True)
-        self.assertEqual(frames, decoded_frames)
-
-    def test_multiple_extended_hdlc_frames_from_bits_async_mode(self):
-        eicf = ExtendedInfoCf(pf=True, ns=17, nr=35)
-        information = b'Some stuff that we transmit'
-        ext_fframe = HdlcExtendedIFrame(address=129, control=eicf, information=information)
-
-        frames = [self.uframe, self.ext_sframe, ext_fframe, self.ext_sframe, self.ext_sframe, ext_fframe]
-        bits = encode(frames, HdlcMode.ASYNC_BALANCED)
-
-        decoded_frames = decode(bits, HdlcMode.ASYNC_BALANCED, extended=True)
-        self.assertEqual(frames, decoded_frames)
