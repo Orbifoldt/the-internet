@@ -1,9 +1,10 @@
 import zlib
-from typing import Iterable, Generator, TypeVar, Optional, Tuple
+from typing import Iterable, Generator, TypeVar, Optional, Tuple, Callable
 
 from bitstring import BitArray
 
 T = TypeVar('T')
+U = TypeVar('U')
 
 
 #####################################
@@ -129,6 +130,26 @@ def separate(data: list[T], start_flag: list[T], end_flag: list[T] = None) -> li
         except ValueError:
             break
     return separated_blocks
+
+
+def reduce(source: Iterable[T], identity: U, accumulator: Callable[[U, T], U]) -> U:
+    """
+    This takes a source of data of type T and then combines all the elements into a single element of type U using the
+    accumulator (U, T) -> U. The identity serves as the starting input for this accumulator.
+    This is an implementation of the reduce method part of the Streams API in Java.
+    """
+    concatenated = identity
+    for section in source:
+        concatenated = accumulator(concatenated, section)
+    return concatenated
+
+
+def reduce_bits(source: Iterable[BitArray]) -> BitArray:
+    return reduce(source, BitArray(), lambda concatenated, nxt_array: concatenated + nxt_array)
+
+
+def reduce_bytes(source: Iterable[bytes]) -> bytes:
+    return reduce(source, bytes(), lambda concatenated, nxt_array: concatenated + nxt_array)
 
 
 #####################################

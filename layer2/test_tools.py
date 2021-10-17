@@ -1,9 +1,10 @@
+import operator
 from unittest import TestCase
 
 from bitstring import BitArray
 
 from layer2.tools import bits_to_int, bit_to_byte_generator, crc32, find_match, replace_all_matches, \
-    bits_to_bytes, interleave, separate, get_data_between_flags, stuff_bits, destuff_bits
+    bits_to_bytes, interleave, separate, get_data_between_flags, stuff_bits, destuff_bits, reduce
 
 
 def bool_list(string: str):
@@ -16,9 +17,9 @@ class Test(TestCase):
         checksum = crc32(test_string)
         self.assertEqual(0xE7CCFC9A.to_bytes(4, byteorder='little'), checksum)
 
-#####################################
-#     Bits <-> Bytes conversions    #
-#####################################
+    #####################################
+    #     Bits <-> Bytes conversions    #
+    #####################################
 
     def test_bits_to_int(self):
         self.assertEqual(0, bits_to_int([]))
@@ -44,9 +45,9 @@ class Test(TestCase):
         self.assertEqual(36, found_bytes[1])
         self.assertEqual(224, found_bytes[2])
 
-#####################################
-#        list manipulations         #
-#####################################
+    #####################################
+    #        list manipulations         #
+    #####################################
 
     def test_find_match(self):
         data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
@@ -147,9 +148,27 @@ class Test(TestCase):
         self.assertListEqual([0, 0], separated[1])
         self.assertListEqual(block2, separated[2])
 
-#####################################
-#       Stuffing and escaping       #
-# ###################################
+    def test_reduce_with_different_types(self):
+        source = range(5)
+        outcome = reduce(source, ["9"], lambda str_list, integer: str_list + [str(integer)])
+        expected = ["9", "0", "1", "2", "3", "4"]
+        self.assertEqual(expected, outcome)
+
+    def test_reduce_combining_ints_into_a_string(self):
+        source = range(10)
+        outcome = reduce(source, "prefix", lambda str_list, integer: str_list + str(integer))
+        expected = "prefix0123456789"
+        self.assertEqual(expected, outcome)
+
+    def test_reduce_summing_all_entries(self):
+        source = range(100)
+        outcome = reduce(source, 0, operator.add)
+        expected = sum(source)
+        self.assertEqual(expected, outcome)
+
+    #####################################
+    #       Stuffing and escaping       #
+    # ###################################
 
     pattern_str = "11111"
     stuffing_bit = False
