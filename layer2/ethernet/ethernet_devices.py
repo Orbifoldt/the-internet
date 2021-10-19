@@ -14,7 +14,7 @@ class NetworkError(Exception):
 class NetworkInterfaceCard(object):
     def __init__(self, mac: Mac, receive_callback: Callable[[Mac, Mac, object], None]):
         self.mac = mac
-        self.cache: dict[Mac, NetworkInterfaceCard] = {}
+        self.cache: dict[Mac, NetworkInterfaceCard] = {}  # TODO: a nic doesn't have a cache, might be in software
         self.receive_callback = receive_callback
         self.default: Optional[NetworkInterfaceCard] = None
 
@@ -45,6 +45,7 @@ class NetworkInterfaceCard(object):
             self.default = None
 
 
+# TODO: merge this into one with Ethernet Endpoint
 class DeviceWithNic(object):
     def __init__(self,
                  receive_callback: Callable[[Mac, Mac, object], None],
@@ -76,6 +77,12 @@ class DeviceWithNic(object):
         return f"{self.short_name} ({self.nic.mac})"
 
 
+# This is actually not how a switch works... A switch is more "dumb". A switch simply consists of interfaces, i.e.
+# physical ports, and it keeps a cache/table of the mac addresses that are connected via those interfaces. Then,
+# whenever it receives an ethernet frame and it recognizes the mac address, it will send the frame via the associated
+# interface, or else it will flood all interfaces (except for the one sending the frame) with the frame.
+#
+# Shouldn't model it as a collection of NICs, because it doesnt have a mac (right?).
 class EthernetSwitch(DeviceWithNic):
     def __init__(self, mac: Mac = None, short_name: str = ""):
         super().__init__(self.forward, mac, "SWITCH" + short_name)
@@ -87,7 +94,7 @@ class EthernetSwitch(DeviceWithNic):
             self.say(f"Forwarding data from {source} to {target}")
             self.nic.cache[target].receive_callback(source, target, data)
         else:
-            self.say(f"Unknown target {target}, sending to all")
+            self.say(f"Unknown target {target}, sending to all")  # TODO: exclude the sending host
             self.broadcast_to_all(source, target, data)
 
     def broadcast_to_all(self, source, target, data):
@@ -118,6 +125,6 @@ class EthernetEndpoint(DeviceWithNic):
         if self.connected:
             raise NetworkError(f"This computer {self} only has one available connection, which is in use.")
         else:
-            super().connect_to(other, set_default=True)
+            super().connect_to(other, set_default=True) # TODO: switch is not actually the default, should be router?
             self.connected = True
 
