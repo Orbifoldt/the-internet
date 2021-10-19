@@ -5,6 +5,8 @@ class Mac(object):
     mac_pattern = re.compile(r"^(?:[0-9A-Fa-f]{2})([-:])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}$")
 
     def __init__(self, address: bytes, separator=':', uppercase=False) -> None:
+        if len(address) != 6:
+            raise ValueError(f"A mac address consists of exactly 6 bytes, got {len(address)} instead.")
         self.address = bytes(address)
         self.separator = separator
         self.uppercase = uppercase
@@ -21,5 +23,11 @@ class Mac(object):
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, Mac) and self.address == o.address
+
+    def __hash__(self):
+        return self.address.__hash__()
+
+
+UNKNOWN_MAC = Mac(b'\xff\xff\xff\xff\xff\xff')
 
 

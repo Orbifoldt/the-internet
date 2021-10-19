@@ -36,8 +36,7 @@ class HdlcFrame(HdlcLikeBaseFrame):
         calculated_fcs = crc32(frame_bytes[:-4])
         if fcs != calculated_fcs:
             raise ValueError(f"The calculated FCS '{calculated_fcs}' does not equal FCS of the received frame: '{fcs}'",
-                             n,
-                             address, control_bytes, frame_bytes)
+                             n, address, control_bytes, frame_bytes)
 
         control_field = HdlcFrame.interpret_control_field_from(control_bytes)
         return HdlcFrame.construct_hdlc_frame(address, control_field, information)

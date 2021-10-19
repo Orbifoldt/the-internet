@@ -34,15 +34,15 @@ class HdlcLikeBaseFrame(Frame):
         self.address = address
         self.control = control
 
-        if optional_field is None:
-            self.optional_field = bytes()
-        else:
-            self.optional_field = optional_field
-
         if information is None:
             self.information = bytes()
         else:
             self.information = information
+
+        if optional_field is None:
+            self.optional_field = bytes()
+        else:
+            self.optional_field = optional_field
 
         self.fcs = self.calculate_fcs()
 

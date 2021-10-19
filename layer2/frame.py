@@ -17,7 +17,6 @@ class Frame(ABC):
     @abstractmethod
     def flag_bits(self) -> BitArray:
         raise NotImplementedError
-        # return BitArray(auto=self.flag)
 
     @abstractmethod
     def bytes(self) -> bytes:
@@ -31,10 +30,12 @@ class Frame(ABC):
 
     # ENCODING
 
+    @abstractmethod
     def encode_as_bytes(self, *args):
         """ Encoding the bytes of this Frame by means of byte-stuffing/escaping """
         raise NotImplementedError
 
+    @abstractmethod
     def encode_as_bits(self, *args):
         """ Encoding the bits of this Frame by means of bit- or byte-stuffing """
         raise NotImplementedError
@@ -65,12 +66,6 @@ class Frame(ABC):
     def decode_from(cls, encoded: Union[builtins.bytes, BitArray], **kwargs):
         """ Decoding the bytes corresponding to a single Frame by means of destuffing/unescaping bytes """
         raise NotImplementedError
-
-    # @classmethod
-    # @abstractmethod
-    # def decode_from_bits(cls, encoded_bits: BitArray) -> builtins.bytes:
-    #     """ Decoding the bytes corresponding to a single Frame by means of destuffing/unescaping bytes """
-    #     raise NotImplementedError
 
     @classmethod
     @abstractmethod
