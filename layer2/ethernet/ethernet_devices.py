@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import os
+from abc import ABC, abstractmethod
 from typing import Callable, Optional
 
-from layer2.ethernet.ethernet import EthernetFrame
 from layer2.mac import Mac, UNKNOWN_MAC
 
 
@@ -11,120 +10,112 @@ class NetworkError(Exception):
     pass
 
 
-class NetworkInterfaceCard(object):
-    def __init__(self, mac: Mac, receive_callback: Callable[[Mac, Mac, object], None]):
-        self.mac = mac
-        self.cache: dict[Mac, NetworkInterfaceCard] = {}  # TODO: a nic doesn't have a cache, might be in software
-        self.receive_callback = receive_callback
-        self.default: Optional[NetworkInterfaceCard] = None
+class NetworkInterface(object):
+    def __init__(self, interface_num: int, parent: DeviceWithInterfaces):
+        self.connector: Optional[NetworkInterface] = None
+        self.interface_num = interface_num
+        self.parent: DeviceWithInterfaces = parent
 
-    def connect_to(self, nic: NetworkInterfaceCard):
-        self.cache[nic.mac] = nic
-        nic.cache[self.mac] = self
+    def receive(self, *args, **kwargs) -> None:
+        self.parent.receive(*args, **kwargs)
 
-    def set_default(self, nic: NetworkInterfaceCard):
-        if nic.mac not in self.cache:
-            raise NetworkError(f"Can't set a NIC as default if it's not connected to this.")
+    def send(self, source: Mac, target: Mac, data) -> None:
+        if self.connector is None:
+            raise NetworkError("No device connected to this interface")
         else:
-            self.default = nic
+            self.connector.receive(source, target, data, interface_num=self.interface_num)
 
-    def send(self, source: Mac, target: Mac, data):
-        if self.mac == target:
-            self.receive_callback(self.mac, target, data)
-        elif target in self.cache:
-            self.cache[target].receive_callback(source, target, data)
-        elif self.default is not None:
-            self.default.receive_callback(source, target, data)
-        else:
-            raise NetworkError(f"Target {target} not found, and no default connection was set on NIC {self.mac}.")
+    def connect(self, other_interface: NetworkInterface) -> None:
+        if self.connector is not None:
+            raise NetworkError("This interface is already connected")
+        self.connector = other_interface
+        if not other_interface.connector == self:
+            other_interface.connect(self)
 
-    def disconnect_from(self, nic: NetworkInterfaceCard):
-        self.cache.pop(nic.mac, None)
-        nic.cache.pop(self.mac, None)
-        if self.default == nic:
-            self.default = None
+    def disconnect(self) -> None:
+        other_connector = self.connector
+        self.connector = None
+        if other_connector.connector is not None:
+            other_connector.disconnect()
 
 
-# TODO: merge this into one with Ethernet Endpoint
-class DeviceWithNic(object):
-    def __init__(self,
-                 receive_callback: Callable[[Mac, Mac, object], None],
-                 mac: Mac = None,
-                 short_name: str = "NO_NAME"):
-        if mac is None:
-            mac = Mac(os.urandom(6))
-        self.nic = NetworkInterfaceCard(mac, receive_callback)
-        self.short_name = short_name
+class DeviceWithInterfaces(ABC):
+    def __init__(self, num_interfaces: int, name: str):
+        self.interfaces = [NetworkInterface(i, self) for i in range(num_interfaces)]
+        self.name = name
 
-    def say(self, string: str):
-        print(f"[{self.short_name} ({self.nic.mac})]: {string}")
+    def get_interface(self, interface_num: int):
+        if not 0 <= interface_num < len(self.interfaces):
+            raise NetworkError(f"Device {self.name} has no interface with number {interface_num}")
+        return self.interfaces[interface_num]
 
-    def connect_to(self, other: DeviceWithNic, set_default=False):
-        self.nic.connect_to(other.nic)
-        self.say(f"Connected {self.nic.mac} to {other.nic.mac}")
-        if set_default:
-            self.set_default(other)
+    @abstractmethod
+    def receive(self, source: Mac, target: Mac, data, interface_num: int) -> None:  # TODO make this args+kwargs
+        raise NotImplementedError
 
-    def set_default(self, other: DeviceWithNic):
-        self.nic.set_default(other.nic)
-        self.say(f"Set {other.nic.mac} as default output.")
+    # TODO create support for EthernetFrame
+    def send(self, source: Mac, target: Mac, data, interface_num: int) -> None:  # TODO make this args+kwargs
+        self.get_interface(interface_num).send(source, target, data)
 
-    def disconnect(self, other: DeviceWithNic):
-        self.say(f"Disconnecting from {other}")
-        self.nic.disconnect_from(other.nic)
+    def connect_to(self, device: DeviceWithInterfaces, other_interface_num: int, own_interface_num: int):
+        own_interface = self.get_interface(own_interface_num)
+        other_interface = device.get_interface(other_interface_num)
+        own_interface.connect(other_interface)
+
+    def disconnect(self, interface_num: int):
+        self.get_interface(interface_num).disconnect()
+
+    def say(self, *args):
+        print(f"[{self.name}]:", *args)
 
     def __str__(self):
-        return f"{self.short_name} ({self.nic.mac})"
+        return self.name
 
 
-# This is actually not how a switch works... A switch is more "dumb". A switch simply consists of interfaces, i.e.
-# physical ports, and it keeps a cache/table of the mac addresses that are connected via those interfaces. Then,
-# whenever it receives an ethernet frame and it recognizes the mac address, it will send the frame via the associated
-# interface, or else it will flood all interfaces (except for the one sending the frame) with the frame.
-#
-# Shouldn't model it as a collection of NICs, because it doesnt have a mac (right?).
-class EthernetSwitch(DeviceWithNic):
-    def __init__(self, mac: Mac = None, short_name: str = ""):
-        super().__init__(self.forward, mac, "SWITCH" + short_name)
+class EthernetSwitch(DeviceWithInterfaces):
+    def __init__(self, num_interfaces, name: Optional[str] = None):
+        super().__init__(num_interfaces, f"SWITCH{'' if name is None else f'_{name}'}")
+        self.cache = {}
 
-    def forward(self, source: Mac, target, data):
-        if self.nic.mac == target:
-            self.say(f"Received from {source} the following data: '{data}'")
-        elif target in self.nic.cache:
-            self.say(f"Forwarding data from {source} to {target}")
-            self.nic.cache[target].receive_callback(source, target, data)
+    def receive(self, source, target, data, interface_num):
+        self.forward(source, target, data, interface_num)
+        self.update_cache(source, interface_num)
+
+    def forward(self, source: Mac, target, data, port_num):
+        if target in self.cache:
+            self.say(f"Forwarding data from {source}. "
+                     f"Target {target} was cached on interface {self.cache[target].interface_num}")
+            self.cache[target].send(source, target, data)
         else:
-            self.say(f"Unknown target {target}, sending to all")  # TODO: exclude the sending host
-            self.broadcast_to_all(source, target, data)
+            self.say(f"Unknown target {target}, broadcasting frame to all")
+            self.broadcast_to_all(source, target, data, port_num)
 
-    def broadcast_to_all(self, source, target, data):
-        for others in self.nic.cache.values():
-            others.receive_callback(source, target, data)
+    def broadcast_to_all(self, source, target, data, port_num):
+        for interface in self.interfaces:
+            if interface.connector is not None and interface.interface_num != port_num:
+                print(f"[INTERFACE {interface.interface_num}]: Forwarding data from {source} to {target}")
+                interface.send(source, target, data)
+
+    def update_cache(self, source, port_num):
+        self.cache[source] = self.interfaces[port_num]
 
 
-class EthernetEndpoint(DeviceWithNic):
-    def __init__(self, mac: Mac = None, short_name: str = ""):
-        super().__init__(self.receive, mac, "COMPUTER" + short_name)
-        self.connected = False
+class EthernetEndpoint(DeviceWithInterfaces):
+    def __init__(self, mac: Mac, name: str = None):
+        self.mac = mac
+        super().__init__(1, f"COMPUTER{'' if name is None else f'_{name}'} ({self.mac})")
 
-    def receive(self, source: Mac, target: Mac, data):
-        if not self.nic.mac == target:
-            self.say(f"Dropping received frame addressed at {target}...")
-        else:
+    def receive(self, source, target, data, **kwargs):
+        if self.mac == target:
             self.say(f"Received from {source} the following data:\n  > {data}")
-
-    def send(self, target: Mac, data):
-        self.nic.send(self.nic.mac, target, data)
-
-    def send_frame(self, frame: EthernetFrame):
-        if frame.source != self.nic.mac:
-            raise ValueError(f"Invalid source specified in frame, expected {self.nic.mac} but was {frame.source}")
-        self.send(frame.destination, frame)
-
-    def connect_to(self, other: DeviceWithNic, **kwargs):
-        if self.connected:
-            raise NetworkError(f"This computer {self} only has one available connection, which is in use.")
         else:
-            super().connect_to(other, set_default=True) # TODO: switch is not actually the default, should be router?
-            self.connected = True
+            self.say(f"Dropping received frame addressed at {target}...")
 
+    def connect_to2(self, device: DeviceWithInterfaces, other_interface_num: int):
+        self.connect_to(device, other_interface_num, own_interface_num=0)
+
+    def disconnect2(self):
+        self.disconnect(interface_num=0)
+
+    def send2(self, target: Mac, data):
+        self.send(self.mac, target, data, interface_num=0)
