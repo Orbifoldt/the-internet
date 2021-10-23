@@ -3,8 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod, ABC
 from typing import Optional
 
-from layer2.ethernet.ethernet import EthernetFrameBase
-from layer2.ethernet.infrastructure.network_error import NetworkError
+from layer2.infrastructure.network_error import NetworkError
 
 
 class NetworkInterface(object):
@@ -13,14 +12,14 @@ class NetworkInterface(object):
         self.interface_num = interface_num
         self.parent: DeviceWithInterfaces = parent
 
-    def receive(self, frame: EthernetFrameBase, **kwargs) -> None:
-        self.parent.receive(frame, **kwargs)
+    def receive(self, **kwargs) -> None:
+        self.parent.receive(**kwargs)
 
-    def send(self, frame: EthernetFrameBase, **kwargs) -> None:
+    def send(self, **kwargs) -> None:
         if self.connector is None:
             raise NetworkError("No device connected to this interface")
         else:
-            self.connector.receive(frame, interface_num=self.connector.interface_num)
+            self.connector.receive(interface_num=self.connector.interface_num, **kwargs)
 
     def connect(self, other_interface: NetworkInterface) -> None:
         if self.connector is not None:
@@ -51,11 +50,11 @@ class DeviceWithInterfaces(ABC):
         return self.interfaces[interface_num]
 
     @abstractmethod
-    def receive(self, frame: EthernetFrameBase, interface_num: int, **kwargs) -> None:
+    def receive(self, incoming_interface_num: int, **kwargs) -> None:
         raise NotImplementedError
 
-    def send(self, frame: EthernetFrameBase, **kwargs) -> None:
-        self.get_interface(kwargs['interface_num']).send(frame)
+    def send(self, outgoing_interface_num: int, **kwargs) -> None:
+        self.get_interface(outgoing_interface_num).send(**kwargs)
 
     def connect_to(self, device: DeviceWithInterfaces, other_interface_num: int, own_interface_num: int):
         own_interface = self.get_interface(own_interface_num)

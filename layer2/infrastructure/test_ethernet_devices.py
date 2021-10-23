@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-from layer2.ethernet.infrastructure.ethernet_devices import EthernetEndpoint, EthernetSwitch
-from layer2.ethernet.infrastructure.network_error import NetworkError
+from layer2.infrastructure.ethernet_devices import EthernetEndpoint, EthernetSwitch
+from layer2.infrastructure.network_error import NetworkError
 from layer2.mac import Mac, UNKNOWN_MAC
 
 
