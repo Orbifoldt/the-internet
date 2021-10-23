@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Final, final
 
@@ -6,7 +7,7 @@ from layer2.mac import Mac
 from layer2.tools import crc32
 
 
-class EthernetFrameBase:
+class EthernetFrameBase(ABC):
     preamble: Final = int("10" * 28, 2).to_bytes(7, byteorder="big")
     start_frame_delim: Final = int("10101011", 2).to_bytes(1, byteorder="big")
     inter_packet_gap_size: Final = 96
@@ -14,7 +15,8 @@ class EthernetFrameBase:
     MIN_PAYLOAD = 46
     MAX_PAYLOAD = 1500
 
-    def __init__(self, destination: Mac, source: Mac, payload: bytes, headers: bytes) -> None:
+    @abstractmethod
+    def __init__(self, destination: Mac, source: Mac, payload: bytes, other_headers: bytes) -> None:
         if len(payload) > self.MAX_PAYLOAD:
             raise ValueError(f"Max payload size si {self.MAX_PAYLOAD} bytes, received {len(payload)} bytes.")
         if len(payload) < self.MIN_PAYLOAD:
@@ -22,7 +24,7 @@ class EthernetFrameBase:
 
         self.destination = destination
         self.source = source
-        self.other_headers = headers
+        self.other_headers = other_headers
         self.payload = payload
         self.fcs = self.calculate_fcs()
 
