@@ -30,7 +30,8 @@ class Test(TestCase):
         for i in range(len(bit_array)):
             next(decoded)
         with self.assertRaises(StopIteration):
-            next(decoded)
+            for i in range(10000):
+                next(decoded)
 
     def test_decode_delayed(self):
         delay = 120

@@ -1,10 +1,13 @@
+import os
 import re
 
 
 class Mac(object):
     mac_pattern = re.compile(r"^(?:[0-9A-Fa-f]{2})([-:])(?:[0-9A-Fa-f]{2}\1){4}[0-9A-Fa-f]{2}$")
 
-    def __init__(self, address: bytes, separator=':', uppercase=False) -> None:
+    def __init__(self, address: bytes = None, separator=':', uppercase=False) -> None:
+        if address is None:
+            address = os.urandom(6)
         if len(address) != 6:
             raise ValueError(f"A mac address consists of exactly 6 bytes, got {len(address)} instead.")
         self.address = bytes(address)
