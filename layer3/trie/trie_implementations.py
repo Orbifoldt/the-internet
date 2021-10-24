@@ -93,7 +93,3 @@ class StringGenericTrie(Generic[V], AbstractGenericTrie[str, List[str], V]):
         return ''.join(internal_key)
 
 
-strTrie = StringGenericTrie()
-strTrie["abc"] = 5
-
-print("Done")

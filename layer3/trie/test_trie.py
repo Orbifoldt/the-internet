@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from layer3.trie import Trie
+from layer3.trie.trie import Trie
 
 
 class TestTrie(TestCase):
