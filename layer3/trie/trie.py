@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from typing import TypeVar, Optional, List, Generic
+from abc import ABC, abstractmethod
+from typing import TypeVar, Optional, List, Generic, get_args, get_origin
 
 K = TypeVar('K')
 V = TypeVar('V')
+L = TypeVar('L')
 
 
 class Trie(Generic[K, V], object):
@@ -15,7 +17,7 @@ class Trie(Generic[K, V], object):
     def is_valid(self):
         return self.value is not None
 
-    def __contains__(self, key: K):
+    def __contains__(self, key: K) -> bool:
         if len(key) == 0:
             return self.is_valid
         head = key[0]
@@ -29,7 +31,7 @@ class Trie(Generic[K, V], object):
         else:
             head = key[0]
             if head not in self.children:
-                self.children[head] = Trie()
+                self.children[head] = self.__class__()
             self.children[head].__setitem__(key[1:], value)
 
     def __getitem__(self, key: K) -> V:
@@ -101,6 +103,18 @@ class Trie(Generic[K, V], object):
                 keys.append([partial_key] + sub_key)
         return keys
 
+    def vertices(self, path=None):
+        """ Returns a list of all vertices along a specified path and all descendants of the lowest end of the path """
+        if path is None:
+            path = []
+        all_nodes = []
+        for head in self.children:
+            if len(path) == 0 or path[0] == head:
+                child = self.children[head]
+                all_nodes.append(child)
+                all_nodes += child.vertices(path[1:])
+        return all_nodes
+
     def __iter__(self):
         for key in self.keys():
             yield key
@@ -121,11 +135,11 @@ class Trie(Generic[K, V], object):
             return match
 
     def safe_find_best_match(self, key: K, default: Optional[K] = None) -> K:
-        match = self.__find_best_match__(key)
-        if not self.is_valid and len(match) == 0:
+        try:
+            match = self.find_best_match(key)
+        except KeyError:
             return default
-        else:
-            return match
+        return match
 
     def __find_best_match__(self, key: K) -> K:
         if len(key) == 0:
@@ -151,24 +165,56 @@ class Trie(Generic[K, V], object):
         return out
 
 
-trie = Trie('root_val')
-trie.__setitem__("az", "az")
-# trie.__setitem__("a")
-trie.__setitem__("ab", "ab")
-trie.__setitem__("a123", "a123")
-trie.__setitem__("abcde", "abcde")
-trie.__setitem__("abxyz", "abxyz")
-# trie.__setitem__("abc12")
+class AbstractGenericTrie(Generic[K, L, V], Trie[L, V], ABC):
+    """
+    A trie with a public key of type K, but internally uses type L. The pre- and post-processors are called whenever a
+    mapping needs to happen from the public type K to the private type L and vice versa, e.g. when retrieving some key
+    or editing a value of a specific key.
 
-print(trie.to_str())
-print(trie.find_best_match("abc"))
+    This may be useful whenever you want to use some public key type K which is not a List. For example, consider the
+    string type K = str. If we were to use this in the normal Trie implementation the keys would be returned as
+    List[str] (i.e. a list of the characters part of the string), however we would rather just join these together into
+    a single string. See trie_implementations.py for some implementations of this.
+    """
 
-del trie["ab"]
-print("hello")
-print(trie.to_str())
-print(trie.keys())
-print(len(trie))
-print(trie.depth)
-print(trie.num_vertices)
-#
-# print("done")
+    def __init__(self, root_value):
+        super().__init__(root_value)
+
+    @staticmethod
+    @abstractmethod
+    def pre_processor(key: K) -> L:
+        raise NotImplementedError
+
+    def __pre_processor__(self, key: K | L) -> L:
+        # For descendants the key will already be converted to type L, so in that case we just return it:
+        if isinstance(key, get_origin(get_args(self.__orig_bases__[1])[1])):  # Might not be fully supported...
+            return key
+        else:
+            return self.pre_processor(key)
+
+    @staticmethod
+    @abstractmethod
+    def post_processor(internal_key: L) -> K:
+        raise NotImplementedError
+
+    def __contains__(self, key: K) -> bool:
+        return super().__contains__(self.__pre_processor__(key))
+
+    def __setitem__(self, key: K, value: V):
+        super().__setitem__(self.__pre_processor__(key), value)
+
+    def __getitem__(self, key: K) -> V:
+        return super().__getitem__(self.__pre_processor__(key))
+
+    def __delitem__(self, key: K):
+        super().__delitem__(self.__pre_processor__(key))
+
+    @staticmethod
+    def find(trie: AbstractGenericTrie, key: K, default: Optional[V] = None) -> Optional[V]:
+        return super().find(trie, trie.__pre_processor__(key))
+
+    def keys(self) -> List[K]:
+        return [self.post_processor(key) for key in super().keys()]
+
+    def find_best_match(self, key: K) -> K:
+        return self.post_processor(super().find_best_match(self.__pre_processor__(key)))
