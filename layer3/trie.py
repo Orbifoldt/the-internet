@@ -1,14 +1,19 @@
+from __future__ import annotations
+
 from typing import TypeVar, Optional, List, Generic
 
 K = TypeVar('K')
 V = TypeVar('V')
 
 
-class Trie(Generic[K, V]):
+class Trie(Generic[K, V], object):
     def __init__(self, value: V = None):
         self.children: dict[K, Trie[K, V]] = {}
         self.value: V = value
-        self.is_valid = value is not None
+
+    @property
+    def is_valid(self):
+        return self.value is not None
 
     def __contains__(self, key: K):
         if len(key) == 0:
@@ -20,13 +25,12 @@ class Trie(Generic[K, V]):
 
     def __setitem__(self, key: K, value: V):
         if len(key) == 0:
-            self.is_valid = True
             self.value = value
-            return self
-        head = key[0]
-        if head not in self.children:
-            self.children[head] = Trie(head)
-        return self.children[head].__setitem__(key[1:], value)
+        else:
+            head = key[0]
+            if head not in self.children:
+                self.children[head] = Trie()
+            self.children[head].__setitem__(key[1:], value)
 
     def __getitem__(self, key: K) -> V:
         if len(key) == 0:
@@ -41,7 +45,6 @@ class Trie(Generic[K, V]):
 
     def __delitem__(self, key: K):
         if len(key) == 0:
-            self.is_valid = False
             self.value = None
         else:
             head = key[0]
@@ -53,27 +56,47 @@ class Trie(Generic[K, V]):
             else:
                 raise KeyError(f"Invalid key.")
 
+    @staticmethod
+    def find(trie: Trie, key: K, default: Optional[V] = None) -> Optional[V]:
+        for char in key:
+            if char in trie.children:
+                trie = trie.children[char]
+            else:
+                return default
+        return trie.value if not None else default
+
     def __len__(self):
         return len(self.keys())  # i.e. number of (valid) values
 
     @property
     def depth(self) -> int:
-        return max(len(key) for key in self.keys())
+        return max(len(key) for key in self.keys())  # the root has depth 0
 
     @property
     def num_vertices(self) -> int:
-        count = 0
+        count = 1
         for head in self.children:
-            count += 1 + self.children[head].num_vertices
+            count += self.children[head].num_vertices
         return count
 
+    @property
+    def num_edges(self) -> int:
+        return self.num_vertices - 1
+
+    # TODO: fix key finding algorithm to just need a single method
     def keys(self) -> List[K]:
+        keys = self.__keys__()
+        if self.is_valid:
+            keys.append([])
+        return keys
+
+    def __keys__(self) -> List[K]:
         keys = []
         for partial_key in self.children:
             child = self.children[partial_key]
             if child.is_valid:
                 keys.append([partial_key])
-            sub_keys = child.keys()
+            sub_keys = child.__keys__()
             for sub_key in sub_keys:
                 keys.append([partial_key] + sub_key)
         return keys
@@ -84,19 +107,26 @@ class Trie(Generic[K, V]):
         return
 
     def __eq__(self, other):
-        return other.isinstance(self.__class__) \
+        return isinstance(other, self.__class__) \
                and self.is_valid == other.is_valid \
                and self.value == other.value \
                and self.children == other.children
 
+    # TODO: find algorithm to put this back into one method
     def find_best_match(self, key: K) -> K:
+        match = self.__find_best_match__(key)
+        if not self.is_valid and len(match) == 0:
+            raise KeyError("No partial match found for key")
+        else:
+            return match
+
+    def __find_best_match__(self, key: K) -> K:
         if len(key) == 0:
             return []
         head = key[0]
         if head in self.children:
             child = self.children[head]
-            acc = [] if not child.is_valid else [head]
-            found = child.find_best_match(key[1:])
+            found = child.__find_best_match__(key[1:])
             if len(found) > 0:
                 return [head] + found
             else:
@@ -106,13 +136,15 @@ class Trie(Generic[K, V]):
 
     def to_str(self, n=0) -> str:
         out = ""
+        if n == 0:
+            out += f"<ROOT>{f' : {self.value}' if self.is_valid else ''}\n"
         for key in self.children:
             child = self.children[key]
-            out += " " * n + f"{key}{f' : {child.value}' if child.is_valid else ''}\n" + child.to_str(n + 1)
+            out += "| " * (n+1) + f"{key}{f' : {child.value}' if child.is_valid else ''}\n" + child.to_str(n + 1)
         return out
 
 
-trie = Trie('')
+trie = Trie('root_val')
 trie.__setitem__("az", "az")
 # trie.__setitem__("a")
 trie.__setitem__("ab", "ab")
