@@ -83,7 +83,7 @@ class Trie(Generic[K, V], object):
     def num_edges(self) -> int:
         return self.num_vertices - 1
 
-    # TODO: fix key finding algorithm to just need a single method
+    # TODO: fix key finding algorithm to just need a single method with __keys__
     def keys(self) -> List[K]:
         keys = self.__keys__()
         if self.is_valid:
@@ -112,11 +112,18 @@ class Trie(Generic[K, V], object):
                and self.value == other.value \
                and self.children == other.children
 
-    # TODO: find algorithm to put this back into one method
+    # TODO: find algorithm to put this back into one method with __find_best_match__
     def find_best_match(self, key: K) -> K:
         match = self.__find_best_match__(key)
         if not self.is_valid and len(match) == 0:
             raise KeyError("No partial match found for key")
+        else:
+            return match
+
+    def safe_find_best_match(self, key: K, default: Optional[K] = None) -> K:
+        match = self.__find_best_match__(key)
+        if not self.is_valid and len(match) == 0:
+            return default
         else:
             return match
 
@@ -140,7 +147,7 @@ class Trie(Generic[K, V], object):
             out += f"<ROOT>{f' : {self.value}' if self.is_valid else ''}\n"
         for key in self.children:
             child = self.children[key]
-            out += "| " * (n+1) + f"{key}{f' : {child.value}' if child.is_valid else ''}\n" + child.to_str(n + 1)
+            out += "| " * (n + 1) + f"{key}{f' : {child.value}' if child.is_valid else ''}\n" + child.to_str(n + 1)
         return out
 
 

@@ -293,5 +293,14 @@ class TestTrie(TestCase):
         with self.assertRaises(KeyError):
             self.trie.find_best_match('zzzzzzz')
 
+    def test_safe_find_best_match_in_trie_without_root_value_should_return_default_value(self):
+        self.assertIsNone(self.trie.safe_find_best_match("x"))
+        self.assertIsNone(self.trie.safe_find_best_match("zzzzzz"))
 
+        default_val = "z"
+        self.assertEqual(default_val, self.trie.safe_find_best_match("x", default_val))
+        self.assertEqual(default_val, self.trie.safe_find_best_match("zzzzzz", default_val))
 
+        # Keys that (partially) match are still returned correctly
+        self.assertEqual(["a"], self.trie.safe_find_best_match("a"))
+        self.assertEqual(["a"], self.trie.safe_find_best_match("ab"))
