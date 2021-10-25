@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Final, final
+from typing import Final
 
 from bitstring import BitArray
+
 from layer2.mac import Mac
 from layer2.tools import crc32
 

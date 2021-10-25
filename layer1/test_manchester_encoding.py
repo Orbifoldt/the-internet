@@ -1,6 +1,8 @@
-from typing import Callable, Any
+from typing import Callable
 from unittest import TestCase
+
 from bitstring import BitArray
+
 from manchester_encoding import encode, decode
 
 

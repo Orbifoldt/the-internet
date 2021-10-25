@@ -1,10 +1,8 @@
 from itertools import count
-from math import sin, pi, cos, floor, ceil
-from types import NoneType
+from math import sin, pi, cos, ceil
 from typing import Callable, Generator
 
 import numpy as np
-from bitstring import BitArray
 
 
 def node1(t):

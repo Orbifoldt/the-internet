@@ -1,6 +1,5 @@
 from unittest import TestCase
 
-from layer2.hdlc.control_field import SupervisoryType, UnnumberedType
 from layer2.hdlc.hdlc import *
 from layer2.tools import bits_to_bytes
 

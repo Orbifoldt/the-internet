@@ -1,5 +1,3 @@
-from bitstring import BitArray
-
 from layer2.ethernet.ethernet import EthernetFrame
 from layer2.ethernet.noneable_data_structures import NoneableBitArray, NoneableBytes
 from layer2.tools import interleave, reduce

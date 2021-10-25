@@ -119,8 +119,6 @@ class UnnumberedType(Enum):
         return f'<{type(self).__name__}.{self.name}: code=({self.m1!r},{self.m2!r}); {self.description!r}>'
 
 
-
-
 class UnnumberedCf(ControlField):
     m1_bits = 2
     m2_bits = 3

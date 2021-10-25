@@ -1,9 +1,7 @@
 from unittest import TestCase
 
-from bitstring import BitArray
-
 from layer2.frame import encode, encode_bytes, decode, decode_bytes
-from layer2.hdlc_base import HdlcMode, HdlcLikeBaseFrame
+from layer2.hdlc_base import HdlcMode
 from layer2.ppp.point_to_point import PppFrame, PppProtocol
 
 

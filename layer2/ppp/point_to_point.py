@@ -4,7 +4,6 @@ from typing import Final
 from bitstring import BitArray
 
 from layer2.hdlc.control_field import ControlField
-from layer2.hdlc.hdlc import HdlcFrame
 from layer2.hdlc_base import HdlcLikeBaseFrame
 from layer2.tools import crc32
 
