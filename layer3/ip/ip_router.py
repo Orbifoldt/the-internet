@@ -1,6 +1,7 @@
 from ipaddress import IPv4Address
 
 from layer2.infrastructure.network_interface import DeviceWithInterfaces
+from layer3.ip.ipv4 import IPv4Packet
 from layer3.trie.routing_table import IPv4RoutingTable, IPv6RoutingTable
 
 
@@ -11,11 +12,12 @@ class IpRouter(DeviceWithInterfaces):
         self.forwarding_table_v4: IPv4RoutingTable[int] = IPv4RoutingTable()
         self.forwarding_table_v6: IPv6RoutingTable[int] = IPv6RoutingTable()
 
-    def forward(self, target: IPv4Address, data):
-        network = self.forwarding_table_v4.find_best_match(target)
+    def forward(self, packet: IPv4Packet):
+        network = self.forwarding_table_v4.find_best_match(packet.destination)
         interface_num = self.forwarding_table_v4[network]
-        self.get_interface(interface_num).send(target, data)
+        packet.decrease_ttl()
+        self.get_interface(interface_num).send(packet)
 
     def receive(self, incoming_interface_num: int, **kwargs) -> None:
         self.say(*kwargs.values())
-        self.forward(kwargs["target"], kwargs["data"])
+        self.forward(kwargs["packet"])
