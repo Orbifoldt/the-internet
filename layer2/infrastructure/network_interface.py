@@ -19,7 +19,7 @@ class NetworkInterface(object):
         if self.connector is None:
             raise NetworkError("No device connected to this interface")
         else:
-            self.connector.receive(interface_num=self.connector.interface_num, **kwargs)
+            self.connector.receive(incoming_interface_num=self.connector.interface_num, **kwargs)
 
     def connect(self, other_interface: NetworkInterface) -> None:
         if self.connector is not None:
