@@ -13,10 +13,15 @@ from layer3.tools import checksum
 class IPv4Packet(object):
     VERSION: Final = 4
 
-    def __init__(self, source: IPv4Address, destination: IPv4Address, payload: bytes,
-                 protocol: IPProtocol = IPProtocol.TCP):
-        self.header = IPv4Header.default_header(source, destination, len(payload), protocol)
+    def __init__(self, header: IPv4Header, payload: bytes):
+        self.header = header
         self.payload = payload
+
+    @staticmethod
+    def default_packet(source: IPv4Address, destination: IPv4Address, payload: bytes,
+                       protocol: IPProtocol = IPProtocol.TCP):
+        header = IPv4Header.default_header(source, destination, len(payload), protocol)
+        return IPv4Packet(header, payload)
 
     @property
     def bytes(self):
@@ -32,7 +37,7 @@ class IPv4Packet(object):
 
     @property
     def destination(self):
-        return self.header.destination
+        return self.header.destination_ip
 
     @property
     def is_valid(self) -> bool:
@@ -42,12 +47,16 @@ class IPv4Packet(object):
         """ Decrease Time To Live of this packet and recalculate the header checksum. Returns remaining TTL. """
         return self.header.decrease_ttl()
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.header == other.header and self.payload == other.payload
+
 
 class IPv4Header(object):
     VERSION: Final = 4
+    header_byte_len: Final = 20
 
     def __init__(self, dscp: DSCP, ecn: ECN, identification: int, flags: IPv4Flag, fragment_offset: int,
-                 time_to_live: int, protocol: IPProtocol, data_length: int, source: IPv4Address,
+                 time_to_live: int, protocol: IPProtocol, payload_length: int, source: IPv4Address,
                  destination: IPv4Address, *options: IPv4Options):
         self.version = BitArray(uint=self.VERSION, length=4)
         self.dscp = dscp.bits
@@ -60,10 +69,10 @@ class IPv4Header(object):
         self.header_checksum = BitArray(auto=16)
         self.source = BitArray(uint=int(source), length=32)
         self.destination = BitArray(uint=int(destination), length=32)
-        self.options = sum(option.bits for option in options)
+        self.options = sum(option.bits for option in options) if len(options) != 0 else BitArray(auto=0)
 
         self.ihl = self.calculate_ihl()
-        self.total_length = self.calculate_packet_byte_len(data_length)
+        self.total_length = self.calculate_packet_byte_len(payload_length)
         self.header_checksum = self.calculate_checksum()
 
         self.source_ip = source
@@ -84,10 +93,10 @@ class IPv4Header(object):
         num_bits = 5 * 32 + len(self.options)
         if num_bits % 32 != 0:
             raise ValueError(f"Expected multiple of 32 bits, but found {num_bits}")
-        return BitArray(uint=num_bits / 32, length=4)
+        return BitArray(uint=int(num_bits / 32), length=4)
 
-    def calculate_packet_byte_len(self, data_length: int) -> int:
-        return data_length + 4 * self.ihl
+    def calculate_packet_byte_len(self, data_length: int) -> BitArray:
+        return BitArray(uint=data_length + 4 * self.ihl.uint, length=16)
 
     def calculate_checksum(self) -> BitArray:
         """
@@ -108,6 +117,12 @@ class IPv4Header(object):
         ithout setting the checksum bits to 0. If this returns all 0's then the checksum is valid"""
         return checksum(self.bits) == BitArray(auto=16)
 
+    def overwrite_checksum(self, header_checksum: BitArray):
+        if not len(header_checksum) == 16:
+            raise ValueError
+        self.header_checksum = header_checksum
+        return self
+
     def decrease_ttl(self) -> int:
         """ Decrease the Time To Live by one and recalculate the checksum """
         new_ttl = int(self.time_to_live.bin, 2) - 1
@@ -116,10 +131,13 @@ class IPv4Header(object):
         self.header_checksum = self.calculate_checksum()
         return new_ttl
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.bits == other.bits
+
     @staticmethod
-    def default_header(source: IPv4Address, destination: IPv4Address, data_len: int, protocol=IPProtocol.TCP, ttl=64):
+    def default_header(source: IPv4Address, destination: IPv4Address, data_len: int, protocol=IPProtocol.TCP, ttl=128):
         return IPv4Header(dscp=DSCP.CS0, ecn=ECN.NON_ECT, identification=0, flags=IPv4Flag(True, False),
-                          fragment_offset=0, time_to_live=ttl, protocol=protocol, data_length=data_len,
+                          fragment_offset=0, time_to_live=ttl, protocol=protocol, payload_length=data_len,
                           source=source, destination=destination)
 
 
@@ -133,6 +151,15 @@ class IPv4Flag(object):
     @property
     def bits(self):
         return BitArray(auto=[0, 1 if self.df else 0, 1 if self.mf else 0])
+
+    @classmethod
+    def from_bits(cls, bits: BitArray):
+        if bits[0]:
+            raise ValueError("First bit of IPv4 flag must be 0")
+        return IPv4Flag(bits[1] == 1, bits[2] == 1)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.df == other.df and self.mf == other.mf
 
 
 class IPv4Options(Enum):
@@ -178,3 +205,9 @@ class IPv4Options(Enum):
     def bits(self):
         return BitArray(uint=self.int_value, length=32)
 
+    @classmethod
+    def from_int(cls, n: int) -> IPv4Options:
+        matching_entries = [option for option in cls if option.int_value == n]
+        if len(matching_entries) == 0:
+            raise ValueError(f"Invalid value '{n}', no IPv4 option found with this value.")
+        return matching_entries[0]

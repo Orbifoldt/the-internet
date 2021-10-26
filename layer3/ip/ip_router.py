@@ -1,5 +1,3 @@
-from ipaddress import IPv4Address
-
 from layer2.infrastructure.network_interface import DeviceWithInterfaces
 from layer3.ip.ipv4 import IPv4Packet
 from layer3.trie.routing_table import IPv4RoutingTable, IPv6RoutingTable

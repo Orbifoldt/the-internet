@@ -10,9 +10,14 @@ from layer3.ip.shared import DSCP, ECN, IPProtocol
 class IPv6Packet(object):
     VERSION: Final = 6
 
-    def __init__(self, source: IPv6Address, destination: IPv6Address, payload: bytes):
-        self.header = IPv6Header.default_header(source, destination, len(payload))   # TODO
+    def __init__(self, header: IPv6Header, payload: bytes):
+        self.header = header
         self.payload = payload
+
+    @staticmethod
+    def default_packet(source: IPv6Address, destination: IPv6Address, payload: bytes):
+        header = IPv6Header.default_header(source, destination, len(payload))
+        return IPv6Packet(header, payload)
 
     @property
     def bytes(self):
@@ -33,10 +38,13 @@ class IPv6Packet(object):
     def decrease_hop_limit(self):
         self.header.decrease_hop_limit()
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.header == other.header and self.payload == other.payload
+
 
 class IPv6Header(object):
     VERSION: Final = 6
-    header_byte_leng = 40
+    header_byte_len: Final = 40
 
     def __init__(self, dscp: DSCP, ecn: ECN, flow_label: int, payload_len: int, next_header: IPProtocol, hop_limit: int,
                  source: IPv6Address, destination: IPv6Address, *options):
@@ -71,6 +79,11 @@ class IPv6Header(object):
         self.hop_limit = BitArray(uint=new_hop_limit, length=8)
         return new_hop_limit
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.bits == other.bits
+
     @staticmethod
-    def default_header(source: IPv6Address, destination: IPv6Address, data_len: int) -> IPv6Header:
-        raise NotImplementedError
+    def default_header(source: IPv6Address, destination: IPv6Address, data_len: int, protocol=IPProtocol.TCP,
+                       hop_limit=128) -> IPv6Header:
+        return IPv6Header(dscp=DSCP.CS0, ecn=ECN.NON_ECT, flow_label=0, payload_len=data_len, next_header=protocol,
+                          hop_limit=hop_limit, source=source, destination=destination)

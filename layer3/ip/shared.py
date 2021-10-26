@@ -1,5 +1,6 @@
-from enum import Enum
+from __future__ import annotations
 
+from enum import Enum
 from bitstring import BitArray
 
 
@@ -40,6 +41,13 @@ class DSCP(Enum):
     def bits(self):
         return BitArray(uint=self.dscp_value, length=6)
 
+    @classmethod
+    def from_int(cls, n: int) -> DSCP:
+        matching_entries = [dscp for dscp in cls if dscp.dscp_value == n]
+        if len(matching_entries) == 0:
+            raise ValueError
+        return matching_entries[0]
+
 
 class ECN(Enum):
     """
@@ -76,3 +84,10 @@ class IPProtocol(Enum):
     @property
     def bits(self):
         return BitArray(uint=self.int_value, length=8)
+
+    @classmethod
+    def from_int(cls, n: int) -> IPProtocol:
+        matching_entries = [ipp for ipp in cls if ipp.int_value == n]
+        if len(matching_entries) == 0:
+            raise ValueError
+        return matching_entries[0]
