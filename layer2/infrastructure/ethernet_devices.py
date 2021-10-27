@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from layer2.arp.arp import ARPPacket
 from layer2.ethernet.ethernet import EthernetFrameBase, EtherType, EthernetFrame, LlcType, Ethernet802_3Frame
 from layer2.infrastructure.network_error import NetworkError
 from layer2.infrastructure.network_interface import DeviceWithInterfaces, NetworkInterface
@@ -46,14 +47,17 @@ class EthernetEndpoint(DeviceWithInterfaces):  # With a single interface in this
         if mac is None:
             mac = Mac()
         self.mac = mac
-        super().__init__(1, name, name_prefix="COMPUTER", name_suffix=f" ({self.mac})")
+        super().__init__(1, name, name_prefix="COMPUTER", name_suffix=f" <{self.mac}>")
 
     def receive(self, incoming_interface_num: int = 0, **kwargs):
         frame: EthernetFrameBase = kwargs['frame']
         if self.mac == frame.destination:
-            self.say(f"Received from {frame.source} the following data:\n  > {frame.payload}")
-            if 'callback' in kwargs:
-                kwargs['callback']()
+            self.say(f"Received from {frame.source} the following frame data:\n    > {frame.payload}")
+            return frame
+        elif frame.destination == ARPPacket.UNKNOWN_MAC:
+            self.say(f"Received possible ARP from {frame.source}, opening payload...")
+            return frame
+
         else:
             self.say(f"Dropping received frame addressed at {frame.destination}...")
 
@@ -69,8 +73,13 @@ class EthernetEndpoint(DeviceWithInterfaces):  # With a single interface in this
             raise NetworkError("Source MAC of the frame is not the same as self.mac")
         super().send(outgoing_interface_num=outgoing_interface_num, frame=frame)
 
+    def send_frame(self, frame: EthernetFrameBase):
+        self.send(frame=frame)
+
     def send_data(self, payload: bytes, destination: Mac, ether_type: EtherType = EtherType.IPV4):
-        self.send(frame=EthernetFrame(destination, self.mac, payload, ether_type))
+        self.send_frame(EthernetFrame(destination, self.mac, payload, ether_type))
 
     def send_data_802_3(self, payload: bytes, destination: Mac, ether_type: LlcType = LlcType.DEFAULT):
-        self.send(frame=Ethernet802_3Frame(destination, self.mac, payload, ether_type))
+        self.send_frame(Ethernet802_3Frame(destination, self.mac, payload, ether_type))
+
+

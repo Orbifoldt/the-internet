@@ -10,9 +10,13 @@ class Mac(object):
             address = os.urandom(6)
         if len(address) != 6:
             raise ValueError(f"A mac address consists of exactly 6 bytes, got {len(address)} instead.")
-        self.address = bytes(address)
+        self._address = bytes(address)
         self.separator = separator
         self.uppercase = uppercase
+
+    @property
+    def address(self):
+        return self._address
 
     @staticmethod
     def fromstring(mac_string: str):
@@ -30,7 +34,13 @@ class Mac(object):
     def __hash__(self):
         return self.address.__hash__()
 
+    def __copy__(self):
+        return Mac(self.address)
 
-UNKNOWN_MAC = Mac(b'\xff\xff\xff\xff\xff\xff')
+    def __deepcopy__(self, memodict={}):
+        return self.__copy__()
+
+
+
 
 

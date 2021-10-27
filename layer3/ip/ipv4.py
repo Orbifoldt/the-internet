@@ -10,6 +10,7 @@ from layer3.ip.shared import DSCP, ECN, IPProtocol
 from layer3.tools import checksum
 
 
+# TODO: fragmentation of large packets
 class IPv4Packet(object):
     VERSION: Final = 4
 
@@ -49,6 +50,9 @@ class IPv4Packet(object):
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.header == other.header and self.payload == other.payload
+
+    def __len__(self):
+        return len(self.bytes)
 
 
 class IPv4Header(object):

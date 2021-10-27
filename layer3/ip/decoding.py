@@ -10,9 +10,9 @@ from layer3.ip.shared import ECN, DSCP, IPProtocol
 def packet_decoder(data: bytes):
     version = get_ip_version(data)
     if version == IPv4Packet.VERSION:
-        return ipv4_from_bytes(data)
+        return ipv4_packet_decoder(data)
     elif version == IPv6Packet.VERSION:
-        return ipv6_from_bytes(data)
+        return ipv6_packet_decoder(data)
     else:
         raise ValueError(f"Unsupported IP version: {version}")
 
@@ -21,7 +21,7 @@ def get_ip_version(raw_data: bytes) -> int:
     return BitArray(auto=raw_data[:1])[:4].uint
 
 
-def ipv4_from_bytes(data: bytes):
+def ipv4_packet_decoder(data: bytes):
     fixed_header = BitArray(auto=data[:20])
 
     version: int = fixed_header[:4].uint
@@ -59,7 +59,7 @@ def ipv4_from_bytes(data: bytes):
     return IPv4Packet(header, payload)
 
 
-def ipv6_from_bytes(data: bytes):
+def ipv6_packet_decoder(data: bytes):
     fixed_header = BitArray(auto=data[:40])
 
     version: int = fixed_header[:4].uint

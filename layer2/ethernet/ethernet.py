@@ -56,8 +56,14 @@ class EtherType(Enum):
     IPV4 = 0x0800
     IPV6 = 0x86DD
     ARP = 0x0806
+    WOL = 0x0842  # Wake-on-LAN
+    APPLETALK = 0x809B
 
     def to_bytes(self):
+        return self.value.to_bytes(2, byteorder="big")
+
+    @property
+    def bytes(self):
         return self.value.to_bytes(2, byteorder="big")
 
 
@@ -66,7 +72,7 @@ class EthernetFrame(EthernetFrameBase):
     MAX_PAYLOAD: Final = 1500
 
     def __init__(self, destination: Mac, source: Mac, payload: bytes, ether_type: EtherType = EtherType.IPV4) -> None:
-        if ether_type != EtherType.IPV4:
+        if not (ether_type == EtherType.IPV4 or ether_type == EtherType.IPV6 or ether_type == EtherType.ARP):
             raise ValueError("This ether type is not yet implemented")
         super().__init__(destination, source, payload, ether_type.to_bytes())
         self.ether_type = ether_type
@@ -92,6 +98,7 @@ class Ethernet802_3Frame(EthernetFrameBase):
     def __init__(self, destination: Mac, source: Mac, payload: bytes, llc_type: LlcType = LlcType.DEFAULT) -> None:
         if llc_type != LlcType.DEFAULT:
             raise ValueError("This LLC type is not yet implemented")
+        print("WARNING: this frame type is not implemented everywhere")
 
         self.size = len(payload).to_bytes(2, byteorder='big')
         if len(payload) < self.MIN_PAYLOAD:

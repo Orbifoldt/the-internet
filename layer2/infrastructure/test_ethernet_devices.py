@@ -10,13 +10,13 @@ class TestNetworkInterface(TestCase):
     macB = Mac.fromstring("BB:BB:BB:BB:BB:BB")
     computer_A = EthernetEndpoint(macA, "A")
     computer_B = EthernetEndpoint(macB, "B")
-    
+
     def tearDown(self) -> None:
         self.computer_A.disconnect()
         self.computer_B.disconnect()
 
     def test_networking(self):
-        macC = UNKNOWN_MAC
+        mac_c = UNKNOWN_MAC
         switch = EthernetSwitch(3)
 
         print(f"\nWe'll connect {self.computer_A} and {self.computer_B} each to the switch {switch}.")
@@ -29,7 +29,7 @@ class TestNetworkInterface(TestCase):
         self.computer_B.send_data(b"Hello back to you Alice!", self.macA)
 
         print(f"\nIf {self.computer_A} sends some frame to unknown destination it won't be received.")
-        self.computer_A.send_data(b"Non-existing mac should not receive this data", macC)
+        self.computer_A.send_data(b"Non-existing mac should not receive this data", mac_c)
 
         print(f"\nNow {self.computer_B} disconnects from the switch.")
         self.computer_B.disconnect()
@@ -87,5 +87,3 @@ class TestNetworkInterface(TestCase):
         self.computer_A.connect_to(self.computer_B, 0)
 
         self.assertEqual(self.computer_A.get_interface(0), self.computer_B.get_interface(0).connector)
-
-
