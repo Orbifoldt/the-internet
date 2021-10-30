@@ -1,30 +1,33 @@
 from ipaddress import IPv4Address, IPv6Address
-from typing import Optional
+from typing import Optional, Callable
 
 from layer2.arp.arp import ARPFrame, ARPPacket, extract_arp_packet, ARPOperation
 from layer2.ethernet.ethernet import EthernetFrameBase, EthernetFrame, EtherType
-from layer2.infrastructure.ethernet_devices import EthernetEndpoint
+from layer2.infrastructure.ethernet_devices import EthernetEndpointWithArp
+from layer2.infrastructure.network_error import NetworkError
 from layer2.mac import Mac
 from layer3.ip.decoding import ipv4_packet_decoder
 from layer3.ip.ipv4 import IPv4Packet, IPv4Header
 
 
-# TODO: router discovery?
-class ComputerWithIpCapability(EthernetEndpoint):
+class ComputerWithIpCapability(EthernetEndpointWithArp):
     def __init__(self, ip4: IPv4Address, ip6: IPv6Address, mac: Mac = None, name: str = ""):
-        super().__init__(mac, name + f"({ip4})")
+        super().__init__(ip4, mac, name + f"({ip4})")
         self.ip4 = ip4
         self.ip6 = ip6
-        self.ip4_cache: dict[IPv4Address, Mac] = {}
         self.ip6_cache: dict[IPv6Address, Mac] = {}
 
-    def receive(self, incoming_interface_num: int = 0, **kwargs):
-        frame: Optional[EthernetFrameBase] = super().receive(incoming_interface_num, **kwargs)
+    @property
+    def ip4_cache(self):
+        return self.get_interface(0).ip4_cache
+
+    def receive(self, frame: EthernetFrameBase, incoming_interface_num: int = 0):
+        frame: Optional[EthernetFrameBase] = super().receive(frame, incoming_interface_num)
         if frame is None:
             return
         if isinstance(frame, EthernetFrame):
             if frame.ether_type == EtherType.ARP:
-                self.process_arp(frame)
+                raise NetworkError("Arp should not reach this point...")
             elif frame.ether_type == EtherType.IPV4:
                 ip_payload = self.process_ipv4(frame)
                 return ip_payload
@@ -59,25 +62,7 @@ class ComputerWithIpCapability(EthernetEndpoint):
     def send_arp_for(self, other_ip: IPv4Address):
         """ Send out an ARP request for the other_ip address to discover and store their mac address """
         arp_frame = ARPFrame(ARPPacket(self.mac, self.ip4, other_ip))
-        self.send_frame(arp_frame)
-
-    def process_arp(self, frame: EthernetFrame):
-        arp_packet = extract_arp_packet(frame)
-        if arp_packet.target_ip == self.ip4:
-            self.store_arp_information(arp_packet)
-            if arp_packet.operation == ARPOperation.REQUEST:
-                self.respond_to_arp_request(arp_packet)
-        else:
-            self.say(f"Received ARP packet targeted at {arp_packet.target_ip}, dropping packet.")
-
-    def store_arp_information(self, arp_packet: ARPPacket):
-        self.say(f"Received ARP packet from {arp_packet.sender_ip}, storing their MAC {arp_packet.sender_mac}")
-        self.ip4_cache[arp_packet.sender_ip] = arp_packet.sender_mac
-
-    def respond_to_arp_request(self, arp_packet: ARPPacket):
-        self.say(f"Received ARP request targeted at me ({arp_packet.target_ip}), responding with: {self.mac}.")
-        response = arp_packet.get_response(self.mac)
-        self.send_frame(response)
+        self.send(arp_frame)
 
     def process_ipv4(self, frame: EthernetFrame):
         try:
@@ -86,3 +71,9 @@ class ComputerWithIpCapability(EthernetEndpoint):
             return packet.payload
         except ValueError as e:
             self.say(f"Error while decoding packet inside frame from {frame.source}, it will be dropped. Cause:", e)
+
+
+
+
+
+

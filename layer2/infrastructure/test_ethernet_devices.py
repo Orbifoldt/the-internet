@@ -1,13 +1,18 @@
+from ipaddress import IPv4Address
 from unittest import TestCase
 
-from layer2.infrastructure.ethernet_devices import EthernetEndpoint, EthernetSwitch
+from layer2.infrastructure.ethernet_devices import EthernetEndpoint, EthernetSwitch, EthernetEndpointWithArp
 from layer2.infrastructure.network_error import NetworkError
-from layer2.mac import Mac, UNKNOWN_MAC
+from layer2.mac import Mac
 
 
-class TestNetworkInterface(TestCase):
+class TestNetworkInterface2(TestCase):
     macA = Mac.fromstring("AA:AA:AA:AA:AA:AA")
     macB = Mac.fromstring("BB:BB:BB:BB:BB:BB")
+    # ip_a = IPv4Address("192.168.0.1")
+    # ip_b = IPv4Address("192.168.0.2")
+    # computer_A = EthernetEndpointWithArp(ip_a, macA, "A")
+    # computer_B = EthernetEndpointWithArp(ip_b, macB, "B")
     computer_A = EthernetEndpoint(macA, "A")
     computer_B = EthernetEndpoint(macB, "B")
 
@@ -16,7 +21,7 @@ class TestNetworkInterface(TestCase):
         self.computer_B.disconnect()
 
     def test_networking(self):
-        mac_c = UNKNOWN_MAC
+        mac_c = Mac.fromstring("CC:CC:CC:CC:CC:CC")
         switch = EthernetSwitch(3)
 
         print(f"\nWe'll connect {self.computer_A} and {self.computer_B} each to the switch {switch}.")

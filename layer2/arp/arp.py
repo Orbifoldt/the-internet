@@ -24,7 +24,7 @@ class ARPOperation(Enum):
         return self.value.to_bytes(2, byteorder="big")
 
 
-class HType(Enum):
+class HardwareType(Enum):
     ETHERNET = 1
 
     @property
@@ -36,8 +36,8 @@ class ARPPacket(object):
     UNKNOWN_MAC: Final = Mac(b'\xff\xff\xff\xff\xff\xff')
 
     def __init__(self, sender_hw_addr: Mac, sender_protocol_addr: IPv4Address, target_protocol_addr: IPv4Address,
-                 target_hw_addr: Mac = UNKNOWN_MAC, htype: HType = HType.ETHERNET, ptype: EtherType = EtherType.IPV4,
-                 operation: ARPOperation = ARPOperation.REQUEST):
+                 target_hw_addr: Mac = UNKNOWN_MAC, htype: HardwareType = HardwareType.ETHERNET,
+                 ptype: EtherType = EtherType.IPV4, operation: ARPOperation = ARPOperation.REQUEST):
         self.htype = htype.bytes
         self.ptype = ptype.bytes
         self.hlen = (6).to_bytes(1, byteorder="big")
@@ -47,7 +47,6 @@ class ARPPacket(object):
         self.sender_ip = sender_protocol_addr
         self.target_mac = Mac(target_hw_addr.address)
         self.target_ip = target_protocol_addr
-
 
     @property
     def bytes(self):
@@ -92,7 +91,7 @@ class ARPPacket(object):
 def extract_arp_packet(frame: EthernetFrame):
     if not frame.ether_type == EtherType.ARP:
         raise ValueError("Ether type of provided frame is not ARP")
-    htype = HType(int.from_bytes(frame.payload[0:2], byteorder='big'))
+    htype = HardwareType(int.from_bytes(frame.payload[0:2], byteorder='big'))
     ptype = EtherType(int.from_bytes(frame.payload[2:4], byteorder='big'))
     hlen = int.from_bytes(frame.payload[4:5], byteorder='big')
     plen = int.from_bytes(frame.payload[5:6], byteorder='big')
@@ -102,7 +101,7 @@ def extract_arp_packet(frame: EthernetFrame):
     target_hw_addr = Mac(frame.payload[18:24])
     target_protocol_addr = IPv4Address(int.from_bytes(frame.payload[24:28], byteorder='big'))
 
-    if htype != HType.ETHERNET:
+    if htype != HardwareType.ETHERNET:
         raise ValueError("ARP only implemented for ethernet hardware type")
     if ptype != EtherType.IPV4:
         raise ValueError("ARP only implemented for IPv4 protocol")
