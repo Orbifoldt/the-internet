@@ -1,4 +1,4 @@
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from typing import Optional, Callable
 
 from layer2.arp.arp import ARPFrame, ARPPacket, extract_arp_packet, ARPOperation
@@ -16,6 +16,7 @@ class ComputerWithIpCapability(EthernetEndpointWithArp):
         self.ip4 = ip4
         self.ip6 = ip6
         self.ip6_cache: dict[IPv6Address, Mac] = {}
+        self.default_gateway_ip4 = ip_address('192.168.178.1')
 
     @property
     def ip4_cache(self):
@@ -43,12 +44,11 @@ class ComputerWithIpCapability(EthernetEndpointWithArp):
     def send_ip_packet(self, packet: IPv4Packet):
         if packet.destination not in self.ip4_cache:
             self.say(f"Unknown physical address for ip {packet.destination}, sending out ARP")
-            self.send_arp_for(packet.destination)
+            self.get_interface(0).send_arp_for(packet.destination)
 
         if packet.destination not in self.ip4_cache:
-            self.say("Destination not found after ARP, sending packet to router")
-            # TODO: set router as the target (ip or mac?)
-            raise NotImplementedError("Router functionality not implemented yet.")
+            self.say("Destination not found after ARP, sending packet to default gateway")
+            self.send_packet_to_gateway(packet)
         else:
             target_mac = self.ip4_cache[packet.destination]
             self.say(f"Destination ip {packet.destination} has physical address {target_mac}.")
@@ -59,10 +59,16 @@ class ComputerWithIpCapability(EthernetEndpointWithArp):
                 self.say("Sending packet now...")
                 self.send_data(packet.bytes, target_mac, EtherType.IPV4)
 
-    def send_arp_for(self, other_ip: IPv4Address):
-        """ Send out an ARP request for the other_ip address to discover and store their mac address """
-        arp_frame = ARPFrame(ARPPacket(self.mac, self.ip4, other_ip))
-        self.send(arp_frame)
+    def send_packet_to_gateway(self, packet: IPv4Packet):
+        if self.default_gateway_ip4 not in self.ip4_cache:
+            self.say(f"Unknown physical address for ip {self.default_gateway_ip4}, sending out ARP")
+            self.get_interface(0).send_arp_for(self.default_gateway_ip4)
+
+        if self.default_gateway_ip4 not in self.ip4_cache:
+            self.say(f"Unknown physical address for ip {self.default_gateway_ip4}, dropping packet.")
+            return
+        else:
+            self.send_data(packet.bytes, self.ip4_cache[self.default_gateway_ip4])
 
     def process_ipv4(self, frame: EthernetFrame):
         try:

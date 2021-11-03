@@ -9,8 +9,8 @@ from layer2.mac import Mac
 class TestNetworkInterface2(TestCase):
     macA = Mac.fromstring("AA:AA:AA:AA:AA:AA")
     macB = Mac.fromstring("BB:BB:BB:BB:BB:BB")
-    # ip_a = IPv4Address("192.168.0.1")
-    # ip_b = IPv4Address("192.168.0.2")
+    # ip_a = IPv4Address("192.168.178.1")
+    # ip_b = IPv4Address("192.168.178.2")
     # computer_A = EthernetEndpointWithArp(ip_a, macA, "A")
     # computer_B = EthernetEndpointWithArp(ip_b, macB, "B")
     computer_A = EthernetEndpoint(macA, "A")

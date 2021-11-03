@@ -4,7 +4,7 @@ from abc import abstractmethod, ABC
 from ipaddress import IPv4Address
 from typing import Optional
 
-from layer2.arp.arp import extract_arp_packet, ARPOperation, ARPPacket
+from layer2.arp.arp import extract_arp_packet, ARPOperation, ARPPacket, ARPFrame
 from layer2.ethernet.decoding import decode_frame
 from layer2.ethernet.ethernet import EthernetFrameBase, EthernetFrame, EtherType
 from layer2.hdlc.hdlc import HdlcFrame
@@ -183,3 +183,8 @@ class EthernetInterfaceWithArp(EthernetInterface):
         self.say(f"Received ARP request targeted at me ({arp_packet.target_ip}), responding with: {self.mac}.")
         response = arp_packet.get_response(self.mac)
         self.send(response)
+
+    def send_arp_for(self, other_ip: IPv4Address):
+        """ Send out an ARP request for the other_ip address to discover and store their mac address """
+        arp_frame = ARPFrame(ARPPacket(self.mac, self.ip4, other_ip))
+        self.send(arp_frame)
