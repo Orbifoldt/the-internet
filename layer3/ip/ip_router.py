@@ -32,6 +32,14 @@ class IpRouter(DeviceWithInterfaces):  # A pure router. Consumer routers do have
         self.interface_networks: dict[int, IPv4Network] = {}
         self.interface_addresses: dict[int, IPv4Address] = {}
 
+        for i, interface in enumerate(interfaces):
+            interface.parent = self
+            if isinstance(interface, EthernetInterfaceWithArp):
+                self.interface_addresses[i] = interface.ip4
+                self.interface_networks[i] = IPv4Network((interface.ip4, 24), strict=False)
+            else:
+                print("WARNING! Interface without IP address!!")
+
     def send(self, packet, outgoing_interface_num: int) -> None:
         interface = self.get_interface(outgoing_interface_num)
         # Encapsulate the packet into a frame appropriate for the given interface
@@ -39,14 +47,15 @@ class IpRouter(DeviceWithInterfaces):  # A pure router. Consumer routers do have
             target_mac = self.get_target_mac(outgoing_interface_num, packet.destination)
             frame = EthernetFrame(target_mac, interface.mac, packet.bytes, EtherType.IPV4)
         elif isinstance(interface, HdlcInterface):
-            raise NotImplementedError
+            raise NotImplementedError  # TODO
             # frame = HdlcFrame(0, None, packet.bytes)
         elif isinstance(interface, PppInterface):
-            raise NotImplementedError
+            raise NotImplementedError  # TODO
             # frame = PppFrame(PppProtocol.IPv4, packet.bytes)
         else:
             raise NetworkError(f"Interface {outgoing_interface_num} has unsupported type, can't sent out data.")
 
+        # Then send that frame over the interface
         super().send(frame, outgoing_interface_num)
 
     def get_target_mac(self, interface_num: int, ip_dest: IPv4Address):
@@ -64,6 +73,7 @@ class IpRouter(DeviceWithInterfaces):  # A pure router. Consumer routers do have
             return cache[ip_dest]
 
     def receive(self, frame, incoming_interface_num: int) -> None:
+        # Process the frame, and if appropriate extract the contained packet
         if isinstance(self.get_interface(incoming_interface_num), EthernetInterfaceWithArp):
             packet = self.process_ethernet_frame(frame, incoming_interface_num)
         elif isinstance(self.get_interface(incoming_interface_num), HdlcInterface):
@@ -73,6 +83,7 @@ class IpRouter(DeviceWithInterfaces):  # A pure router. Consumer routers do have
         else:
             raise NetworkError(f"Interface {incoming_interface_num} has unsupported type, can't process incoming data.")
 
+        # If a packet was contained in the frame we process it
         if packet is not None:
             if isinstance(packet, IPv4Packet):
                 try:
@@ -103,8 +114,11 @@ class IpRouter(DeviceWithInterfaces):  # A pure router. Consumer routers do have
             return
         # Forward packet over default route
         except KeyError:
-            self.forward_ipv4_default(packet)
-            # If no default then an NetworkError will be raised and ICMP error-response is returned to sender
+            if self.default_interface_num is not None:
+                self.forward_ipv4_default(packet)
+            else:
+                # If no default then an NetworkError will be raised and ICMP error-response is returned to sender
+                self.nack(packet, None, incoming_interface_num)
 
     def send_ipv4_local(self, packet, interface_num: int):
         self.say(f"Destination is local on interface {interface_num}")
@@ -113,16 +127,19 @@ class IpRouter(DeviceWithInterfaces):  # A pure router. Consumer routers do have
 
     def forward_ipv4(self, packet, interface_num: int):
         self.say(f"Found route for destination, forwarding on interface {interface_num}")
-        raise NotImplementedError  # TODO
+        packet.decrease_ttl()
+        self.send(packet, interface_num)
 
     def forward_ipv4_default(self, packet):
         self.say(f"No route found for destination, forwarding to default")
-        raise NotImplementedError  # TODO
+        packet.decrease_ttl()
+        self.send(packet, self.default_interface_num)
 
     def nack(self, packet, frame, incoming_interface_num: int):
         error_msg: bytes = bytes()  # TODO
         header = IPv4Header.default_header(packet.source, packet.source, len(error_msg), IPProtocol.ICMP)
-        self.send(IPv4Packet(header, error_msg), incoming_interface_num)
+        # self.send(IPv4Packet(header, error_msg), incoming_interface_num)
+        raise NotImplementedError
 
     def process_ethernet_frame(self, frame: EthernetFrameBase, incoming_interface_num: int) -> Optional[bytes]:
         if not isinstance(frame, EthernetFrameBase):

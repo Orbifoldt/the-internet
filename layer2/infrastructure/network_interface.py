@@ -47,7 +47,7 @@ class NetworkInterface(object):
         return f"INTERFACE[interface_num={self.interface_num}, parent={self.parent}]"
 
     def say(self, *args):
-        print(f"[{self.name}]:", *args)
+        self.parent.say(f"<[{self.name}]>:", *args)
 
 
 class DeviceWithInterfaces(ABC):
