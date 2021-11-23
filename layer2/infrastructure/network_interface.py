@@ -105,7 +105,7 @@ class EthernetInterface(NetworkInterface):
         super().connect(other_interface)
 
 
-class HdlcInterface(NetworkInterface):
+class HdlcInterface(NetworkInterface):  # TODO This needs an ip address when using with IP (or make it ip unnumbered)
     def __init__(self, interface_num: int, parent: DeviceWithInterfaces, extended: bool = False):
         super().__init__(interface_num, parent, name="hdlc")
         self.extended = extended
@@ -124,7 +124,7 @@ class HdlcInterface(NetworkInterface):
         super().connect(other_interface)
 
 
-class PppInterface(NetworkInterface):
+class PppInterface(NetworkInterface):  # TODO This needs an ip address when using with IP (or make it ip unnumbered)
     def __init__(self, interface_num: int, parent: DeviceWithInterfaces):
         super().__init__(interface_num, parent, name="ppp")
 
